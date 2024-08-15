@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.5.0/model-viewer.min.js"></script>
+    <link rel="stylesheet" type="text/css" href="style.css" />
+</head>
+<body>
+    <model-viewer src="./assets/UDAH AKU HAPUS SEMUA.glb"     
+    id="model-viewer"
+    alt="Dungkluruk" 
+    skybox-image="./assets/spruit_sunrise_1k_HDR.hdr"
+    camera-controls 
+    touch-action="none" 
+    camera-orbit="-408.8deg 61.96deg 0.99999m" 
+    camera-target="-0.003m 0.5722m 0.0391m" 
+    field-of-view="45deg" 
+    min-field-of-view="25deg"
+    exposure="1"
+    shadow-intensity="1"
+    scale="0.8 0.8 0.8" 
+    max-field-of-view="45deg" 
+    interpolation-decay="200" 
+    min-camera-orbit="auto auto 5%" 
+    ar-placement="floor"
+    ar 
+    ar-modes="webxr scene-viewer quick-look"
+    ios-src="./assets/COBA OBJ.usdz"
+    style="width: 100%; height: 100vh; position: relative;"
+    xr-environment>
+
+            <div id="lazy-load" slot="poster"></div>
+            <div id="button-load" slot="poster">Load 3D Model</div>   
+
+            <button slot="ar-button" id="ar-button">
+              View in your space
+            </button>
+        
+            <div id="ar-prompt"></div>
+        
+            <button id="ar-failure">
+                AR is not tracking!
+            </button>      
+
+                <!-- Hotspot Containers -->
+            <div
+                class="container"
+                slot="hotspot-0"
+                data-position="0.16461349837559763m 0.7458151780932667m -0.1366888814003465m" 
+                data-normal="0.9686974739857849m 0.23764112651768846m 0.07177672938330272m"
+                data-target="0.16461349837559763m 0.7458151780932667m -0.1366888814003465m"
+                data-orbit="-587.2deg 53.35deg 0.4508m"
+                data-header="Gunung Merbabu"
+                data-description="Tempat selfie di awan, tapi hati-hati sama anginnya!"
+            >
+                <button class="view-button">1</button>
+                <div class="card">
+                    <div class="card-header"></div>
+                    <div class="card-body"></div>
+                </div>
+            </div>
+
+            <div
+                class="container"
+                slot="hotspot-2"
+                data-position="0.07027693438109316m 0.6641265398779596m 0.09594816485251578m" 
+                data-normal="-0.023429991294623465m 0.9994364332290694m -0.02403854076873244m"
+                data-target="0.07027693438109316m 0.6641265398779596m 0.09594816485251578m"
+                data-orbit="-762.7deg 78.36deg 0.0745m"
+                data-header="Pendopo"
+                data-description="Debat seru sambil ngopi, siapa takut?"
+            >
+                <button class="view-button">2</button>
+                <div class="card">
+                    <div class="card-header"></div>
+                    <div class="card-body"></div>
+                </div>
+            </div>
+
+            <div
+                class="container"
+                slot="hotspot-3"
+                data-position="0.005953002438934624m 0.6179612413398688m 0.39772135629382144m" 
+                data-normal="-0.02845223752207031m 0.8863604679399255m 0.46212075375739653m"
+                data-target="0.005953002438934624m 0.6179612413398688m 0.39772135629382144m"
+                data-orbit="-768.9deg 83.69deg 0.0854m"
+                data-header="Parkir"
+                data-description="Spot parkir luas dan aman. Mobil kamu juga butuh tempat istirahat yang nyaman!"
+            >
+                <button class="view-button">3</button>
+                <div class="card">
+                    <div class="card-header"></div>
+                    <div class="card-body">
+                </div>
+                </div>
+            </div>
+
+
+            <div class="container" slot="hotspot-4" 
+                data-position="0.03181884750054354m 0.6724909836216408m 0.00020099485950251378m" 
+                data-normal="0m 1m 0m"          
+                data-target="0.03181884750054354m 0.6724909836216408m 0.00020099485950251378m"
+                data-orbit="-677.5deg 79.59deg 0.0385m"
+                data-header="Gardupandang" 
+                data-description="Hijau-hijau santai, selfie yuk!"
+            >
+                <button class="view-button">4</button>
+                <div class="card">
+                    <div class="card-header"></div>
+                    <div class="card-body">
+                </div>
+            </div>
+
+            </div>
+
+            <div class="container" slot="hotspot-5" 
+                data-position="0.032752926938190534m 0.63354956207212m 0.31799526415099294m" 
+                data-normal="0.8282171135486284m 0m 0.5604073632860104m"           
+                data-target="0.032752926938190534m 0.63354956207212m 0.31799526415099294m"
+                data-orbit="-724.2deg 92.3deg 0.014m"
+                data-header="Toko-Toko" 
+                data-description="Belanja sampe dompet nyerah!"
+            >
+                <button class="view-button">5</button>
+                    <div class="card">
+                    <div class="card-header"></div>
+                    <div class="card-body"></div>
+                </div>
+            </div>
+
+
+            <div class="container" slot="hotspot-6" 
+                data-position="0.32811722861362963m 0.7051921130909486m 0.08796013053280755m" 
+                data-normal="-0.46139601533440144m 0.04814640729012375m -0.8858869230881503m"
+                data-target="0.32811722861362963m 0.7051921130909486m 0.08796013053280755m"
+                data-orbit="-590.1deg 94.35deg 0.23589m" 
+                data-header="Kalipasang" 
+                data-description="Ini hutan pohon pinus!">
+                <button class="view-button">6</button
+            >
+                <div class="card">
+                    <div class="card-header"></div>
+                    <div class="card-body"></div>
+                </div>
+            </div>
+
+            <div class="container" slot="hotspot-8" 
+                data-position="-0.019395418061787822m 0.6425466341510977m 0.17478896208975375m" 
+                data-normal="0m 1m 0m"
+                data-target="-0.019395418061787822m 0.6425466341510977m 0.17478896208975375m"
+                data-orbit="-745.5deg 66.06deg 0.0399m"
+                data-header="Kolam renang" 
+                data-description="Ayooooo!!!!"> 
+                <button class="view-button">8</button
+            >
+                <div class="card">
+                    <div class="card-header"></div>
+                    <div class="card-body"></div>
+                </div>
+            </div>
+
+            <div class="container" slot="hotspot-9" 
+                data-position="0.100121379464659m 0.667528129954249m 0.021615829335636872m" 
+                data-normal="0m 1m 0m"
+                data-target="0.100121379464659m 0.667528129954249m 0.021615829335636872m"
+                data-orbit="-766.7deg 70.47deg 0.05839m"
+                data-header="Mushola" 
+                data-description="Ada tempat ibadah juga lo"
+            > 
+                <button class="view-button">9</button>
+                <div class="card">
+                    <div class="card-header"></div>
+                    <div class="card-body"></div>
+                </div>
+            </div>
+
+            <div class="container" slot="hotspot-10" 
+              data-position="0.06299658859323931m 0.8034024765883889m 0.2072504614438096m" 
+              data-normal="0.7082215039685178m 0.2298998016106447m 0.6675090879800493m"
+              data-target="0.06299658859323931m 0.8034024765883889m 0.2072504614438096m"
+              data-orbit="-654.8deg 67.19deg 0.356m"
+              data-header="Burung" 
+              data-description="Disini dingin dan sejukk"
+              > 
+              <button class="view-button">10</button>
+              <div class="card">
+                  <div class="card-header"></div>
+                  <div class="card-body"></div>
+              </div>
+            </div>
+
+        <!-- Navigation Buttons -->
+        <div class="button-container">
+            <button class="nav-button" id="prev-button">&#9664;</button>
+            <span class="button-text" id="button-text">Home</span>
+            <button class="nav-button" id="next-button">&#9654;</button>
+        </div>
+      </model-viewer>      
+
+      <script type="module" src="main.js"></script>
+      <script type="module" src="app.js"></script>
+    </body>
+</html>
