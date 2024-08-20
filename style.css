@@ -57,26 +57,26 @@ model-viewer::part(hotspot) {
 }
 
 model-viewer > #ar-prompt {
-    background-image: url(./assets/stabilization.gif);
-    background-size: contain;
-    background-repeat: no-repeat;
-    width: 400px;
-    height: 400px;
-    position: absolute;
-    left: 50%;
-    top: 0;
-    transform: translate(-50%, 0);
-    z-index: 30;
-    display: none;
+  transform: translateX(-50%);
+  background-color: rgba(0, 0, 0, 0.7);
+  color: white;
+  padding: 10px 20px;
+  border-radius: 10px;
+  font-family: Arial, sans-serif;
+  font-size: 20px;
+  text-align: center;
+  pointer-events: none; 
+  position: absolute;
+  left: 50%;
+  top: 30%;
+  z-index: 30;
+  display: none;
 }
 
 model-viewer[ar-status="session-started"] > #ar-prompt {
 display: block;
 }
 
-model-viewer > #ar-prompt > img {
-animation: circle 4s linear infinite;
-}
 
 model-viewer > #ar-failure {
     position: absolute;
