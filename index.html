@@ -17,7 +17,7 @@
     <link rel="stylesheet" type="text/css" href="style.css" />
 </head>
 <body>
-    <model-viewer src="./assets/final ar.glb"     
+    <model-viewer src="./assets/compressed (7).glb"     
     id="model-viewer"
     alt="Dungkluruk" 
     skybox-image="./assets/spruit_sunrise_1k_HDR.hdr"
@@ -28,15 +28,17 @@
     min-field-of-view="25deg"
     exposure="1"
     shadow-intensity="1"
-    scale="0.8 0.8 0.8" 
     max-field-of-view="45deg" 
     interpolation-decay="200" 
     min-camera-orbit="auto auto 5%" 
     ar-placement="floor"
     ar 
-    ar-modes=" scene-viewer quick-look"
-    ios-src="./assets/COBA OBJ.usdz"
+    disable-zoom
+    ar-scale="fixed"
+    ar-modes="webxr quick-look"
+    ios-src="./assets/compressed (7).usdz"
     style="width: 100%; height: 100vh; position: relative;"
+    xr-environment
     >
 
             <div id="lazy-load" slot="poster"></div>
@@ -210,6 +212,5 @@
       </model-viewer>      
 
       <script type="module" src="main.js"></script>
-      <script type="module" src="app.js"></script>
     </body>
 </html>
