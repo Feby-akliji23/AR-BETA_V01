@@ -17,7 +17,7 @@
     <link rel="stylesheet" type="text/css" href="style.css" />
 </head>
 <body>
-    <model-viewer src="./assets/compressed (7).glb"     
+    <model-viewer src="./assets/final ar.glb"     
     id="model-viewer"
     alt="Dungkluruk" 
     skybox-image="./assets/spruit_sunrise_1k_HDR.hdr"
@@ -33,7 +33,6 @@
     min-camera-orbit="auto auto 5%" 
     ar-placement="floor"
     ar 
-    disable-zoom
     ar-scale="fixed"
     ar-modes="webxr quick-look"
     ios-src="./assets/DUNG KLURUK USDZ UJICOBA X6.usdz"
@@ -42,14 +41,14 @@
     >
 
             <div id="lazy-load" slot="poster"></div>
-            <div id="button-load" slot="poster">Load 3D Model</div>   
+            <div id="button-load" slot="poster">Loading</div>   
 
             <button slot="ar-button" id="ar-button">
               View in your space
             </button>
         
             <div id="ar-prompt">
-                AR Masih maintainance, karena update model
+                AR Masih Maintenance, karena update model
             </div>
         
             <button id="ar-failure">
@@ -212,5 +211,6 @@
       </model-viewer>      
 
       <script type="module" src="main.js"></script>
+      <script type="module" src="app.js"></script>
     </body>
 </html>

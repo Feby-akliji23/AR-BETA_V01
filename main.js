@@ -6,6 +6,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const modelViewer = document.getElementById('model-viewer');
     const buttonLoad = document.getElementById('button-load');
     const lazyLoad = document.getElementById('lazy-load');
+    // const arButton = document.getElementById('ar-button');
 
     let currentIndex = -1;
 
@@ -79,6 +80,28 @@ document.addEventListener('DOMContentLoaded', () => {
             console.warn('ModelViewer element or dismissPoster method not found!');
         }
     });
+
+    // modelViewer.addEventListener('ar-status', (event) => {
+    //     if (event.detail.status === 'failed') {
+    //       alert('AR SEDANG Maintenance KARENA UPDATE MODEL');
+    //     }
+    //   });
+    
+    //   modelViewer.canActivateAR = async () => {
+    //     if (!navigator.xr || !navigator.xr.isSessionSupported) {
+    //       alert('AR SEDANG Maintenance KARENA UPDATE MODEL');
+    //       return false;
+    //     }
+    
+    //     const supported = await navigator.xr.isSessionSupported('immersive-ar');
+    //     if (!supported) {
+    //       alert('AR SEDANG Maintenance KARENA UPDATE MODEL');
+    //       return false;
+    //     }
+    
+    //     return true; // Perangkat mendukung AR, lanjutkan
+    //   };
+    
 
     // Menambahkan event listener untuk mencegah interaksi dengan button-container dari mempengaruhi scene XR
     const buttonContainer = document.querySelector('.button-container');
