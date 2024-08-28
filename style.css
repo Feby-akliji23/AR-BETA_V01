@@ -63,7 +63,7 @@ model-viewer > #ar-prompt {
   padding: 10px 20px;
   border-radius: 10px;
   font-family: Arial, sans-serif;
-  font-size: 15px;
+  font-size: 30px;
   text-align: center;
   pointer-events: none; 
   position: absolute;
