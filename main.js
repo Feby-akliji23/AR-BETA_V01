@@ -72,6 +72,14 @@ document.addEventListener('DOMContentLoaded', () => {
         showAnnotation(currentIndex);
     });
 
+    // // Reset kamera ke posisi default (Home) saat masuk mode AR
+    // modelViewer.addEventListener('ar-status', (event) => {
+    //     if (event.detail.status === 'session-started') {
+    //         currentIndex = -1; // Set to Home
+    //         showAnnotation(currentIndex); // Update kamera ke posisi default
+    //     }
+    // });
+
     // Inisialisasi fungsi untuk dismiss poster saat button-load diklik
     buttonLoad.addEventListener('click', () => {
         if (modelViewer && modelViewer.dismissPoster) {
@@ -81,28 +89,16 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // modelViewer.addEventListener('ar-status', (event) => {
-    //     if (event.detail.status === 'failed') {
-    //       alert('AR SEDANG Maintenance KARENA UPDATE MODEL');
-    //     }
-    //   });
-    
-    //   modelViewer.canActivateAR = async () => {
-    //     if (!navigator.xr || !navigator.xr.isSessionSupported) {
-    //       alert('AR SEDANG Maintenance KARENA UPDATE MODEL');
-    //       return false;
-    //     }
-    
-    //     const supported = await navigator.xr.isSessionSupported('immersive-ar');
-    //     if (!supported) {
-    //       alert('AR SEDANG Maintenance KARENA UPDATE MODEL');
-    //       return false;
-    //     }
-    
-    //     return true; // Perangkat mendukung AR, lanjutkan
-    //   };
-    
-
+    document.querySelector("#model-viewer").addEventListener('ar-status', (event) => {
+        if (event.detail.status === 'failed') {
+          const error = document.querySelector("#error");
+          error.classList.remove('hide');
+          error.addEventListener('transitionend', () => {
+            error.classList.add('hide');
+          });
+        }
+      });
+      
     // Menambahkan event listener untuk mencegah interaksi dengan button-container dari mempengaruhi scene XR
     const buttonContainer = document.querySelector('.button-container');
     buttonContainer.addEventListener('beforexrselect', (ev) => {

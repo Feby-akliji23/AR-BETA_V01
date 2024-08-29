@@ -100,21 +100,24 @@ model-viewer[ar-tracking="not-tracking"] > #ar-failure {
     display: block;
 } */
 
-#error {
-    background-color: #ffffffdd;
-    border-radius: 16px;
-    padding: 16px;
+  #error {
+    background-color: #ff4757;
+    border-radius: 10px;
+    box-shadow: 0px 4px 15px rgba(0, 0, 0, 0.2);
+    padding: 15px 30px;
     position: absolute;
+    font-size: 18px;
+    font-weight: bold;
     left: 50%;
     top: 50%;
     transform: translate3d(-50%, -50%, 0);
     transition: opacity 0.3s;
-}
-#error.hide {
+  }
+  #error.hide {
     opacity: 0;
     visibility: hidden;
-    transition: visibility 2s, opacity 1s 1s;
-}
+    transition: visibility 3s, opacity 1s 1s;
+  }
 
 #lazy-load{
     position: absolute;
@@ -122,7 +125,7 @@ model-viewer[ar-tracking="not-tracking"] > #ar-failure {
     right: 0;
     top: 0;
     bottom: 0;
-    background-image: url("./assets/DUNG KLURUK FINAL.png");
+    background-image: url("./assets/dungkluruk.webp");
     background-size: contain;
     background-repeat: no-repeat;
     background-position: center;
