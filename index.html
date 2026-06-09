@@ -4,221 +4,213 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>AR Tajuk Smart Tourism</title>
+    <script src="https://unpkg.com/three@0.126.0/build/three.min.js"></script>
+    <script src="https://unpkg.com/three@0.126.0/examples/js/loaders/GLTFLoader.js"></script>
+    <script src="https://unpkg.com/three@0.126.0/examples/js/loaders/DRACOLoader.js"></script>
+    <script src="https://unpkg.com/three@0.126.0/examples/js/loaders/RGBELoader.js"></script>
+    <script src="https://unpkg.com/three@0.126.0/examples/js/controls/OrbitControls.js"></script>
     <script
       type="module"
       src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.5.0/model-viewer.min.js"
     ></script>
-    <script src="https://unpkg.com/three@0.126.0/build/three.min.js"></script>
-    <script src="https://unpkg.com/three@0.126.0/examples/js/loaders/GLTFLoader.js"></script>
-    <script src="https://unpkg.com/three@0.126.0/examples/js/controls/OrbitControls.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.126.0/examples/js/libs/stats.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.126.0/examples/js/renderers/CSS3DRenderer.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.126.0/examples/js/loaders/DRACOLoader.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.126.0/examples/js/loaders/RGBELoader.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/webxr-polyfill@latest/build/webxr-polyfill.min.js"></script>
-
     <link rel="stylesheet" type="text/css" href="style.css" />
   </head>
   <body>
     <model-viewer
-      src="./assets/final ar.glb"
       id="model-viewer"
+      src="./assets/final ar.glb"
       alt="Dungkluruk"
       skybox-image="./assets/spruit_sunrise_1k_HDR.hdr"
       camera-controls
-      touch-action="none"
       camera-orbit="-408.8deg 61.96deg 0.99999m"
       camera-target="-0.003m 0.5722m 0.0391m"
       field-of-view="45deg"
       min-field-of-view="25deg"
-      exposure="1"
-      shadow-intensity="1"
       max-field-of-view="45deg"
       interpolation-decay="200"
       min-camera-orbit="auto auto 5%"
-      ar-placement="floor"
-      ar
-      ar-scale="0.8 0.8 0.8"
+      exposure="1"
+      shadow-intensity="1"
       scale="0.8 0.8 0.8"
-      ar-modes="webxr quick-look"
-      ios-src="./assets/COBA OBJ.usdz"
-      style="width: 100%; height: 100vh; position: relative"
+      orientation="0deg 0deg 0deg"
       xr-environment
+      ar
+      ar-modes="quick-look"
+      ios-src="./assets/COBA OBJ.usdz"
+      quick-look-browsers="safari"
     >
-      <div id="lazy-load" slot="poster"></div>
-      <div id="button-load" slot="poster">Loading</div>
-
-      <button slot="ar-button" id="ar-button">View in your space</button>
-      <div id="error" class="hide">AR Tidak Suport di Perangkat Anda</div>
-
-      <div id="ar-prompt">
-        3D model belum stabil, tetap arahkan kamera ke tanah datar untuk
-        menampilkan AR, sampai pesan ini hilang
-      </div>
-
-      <!-- Hotspot Containers -->
-      <div
-        class="container"
-        slot="hotspot-0"
-        data-position="0.16461349837559763m 0.7458151780932667m -0.1366888814003465m"
-        data-normal="0.9686974739857849m 0.23764112651768846m 0.07177672938330272m"
-        data-target="0.16461349837559763m 0.7458151780932667m -0.1366888814003465m"
-        data-orbit="-587.2deg 53.35deg 0.4508m"
-        data-header="Gunung Merbabu"
-        data-description="Tempat selfie di awan, tapi hati-hati sama anginnya!"
-      >
-        <button class="view-button">1</button>
-        <div class="card">
-          <div class="card-header"></div>
-          <div class="card-body"></div>
-        </div>
-      </div>
-
-      <div
-        class="container"
-        slot="hotspot-2"
-        data-position="0.07027693438109316m 0.6641265398779596m 0.09594816485251578m"
-        data-normal="-0.023429991294623465m 0.9994364332290694m -0.02403854076873244m"
-        data-target="0.07027693438109316m 0.6641265398779596m 0.09594816485251578m"
-        data-orbit="-762.7deg 78.36deg 0.0745m"
-        data-header="Pendopo"
-        data-description="Debat seru sambil ngopi, siapa takut?"
-      >
-        <button class="view-button">2</button>
-        <div class="card">
-          <div class="card-header"></div>
-          <div class="card-body"></div>
-        </div>
-      </div>
-
-      <div
-        class="container"
-        slot="hotspot-3"
-        data-position="0.005953002438934624m 0.6179612413398688m 0.39772135629382144m"
-        data-normal="-0.02845223752207031m 0.8863604679399255m 0.46212075375739653m"
-        data-target="0.005953002438934624m 0.6179612413398688m 0.39772135629382144m"
-        data-orbit="-768.9deg 83.69deg 0.0854m"
-        data-header="Parkir"
-        data-description="Spot parkir luas dan aman. Mobil kamu juga butuh tempat istirahat yang nyaman!"
-      >
-        <button class="view-button">3</button>
-        <div class="card">
-          <div class="card-header"></div>
-          <div class="card-body"></div>
-        </div>
-      </div>
-
-      <div
-        class="container"
-        slot="hotspot-4"
-        data-position="0.03181884750054354m 0.6724909836216408m 0.00020099485950251378m"
-        data-normal="0m 1m 0m"
-        data-target="0.03181884750054354m 0.6724909836216408m 0.00020099485950251378m"
-        data-orbit="-677.5deg 79.59deg 0.0385m"
-        data-header="Gardupandang"
-        data-description="Hijau-hijau santai, selfie yuk!"
-      >
-        <button class="view-button">4</button>
-        <div class="card">
-          <div class="card-header"></div>
-          <div class="card-body"></div>
-        </div>
-      </div>
-
-      <div
-        class="container"
-        slot="hotspot-5"
-        data-position="0.032752926938190534m 0.63354956207212m 0.31799526415099294m"
-        data-normal="0.8282171135486284m 0m 0.5604073632860104m"
-        data-target="0.032752926938190534m 0.63354956207212m 0.31799526415099294m"
-        data-orbit="-724.2deg 92.3deg 0.014m"
-        data-header="Toko-Toko"
-        data-description="Belanja sampe dompet nyerah!"
-      >
-        <button class="view-button">5</button>
-        <div class="card">
-          <div class="card-header"></div>
-          <div class="card-body"></div>
-        </div>
-      </div>
-
-      <div
-        class="container"
-        slot="hotspot-6"
-        data-position="0.32811722861362963m 0.7051921130909486m 0.08796013053280755m"
-        data-normal="-0.46139601533440144m 0.04814640729012375m -0.8858869230881503m"
-        data-target="0.32811722861362963m 0.7051921130909486m 0.08796013053280755m"
-        data-orbit="-590.1deg 94.35deg 0.23589m"
-        data-header="Kalipasang"
-        data-description="Ini hutan pohon pinus!"
-      >
-        <button class="view-button">6</button>
-        <div class="card">
-          <div class="card-header"></div>
-          <div class="card-body"></div>
-        </div>
-      </div>
-
-      <div
-        class="container"
-        slot="hotspot-8"
-        data-position="-0.019395418061787822m 0.6425466341510977m 0.17478896208975375m"
-        data-normal="0m 1m 0m"
-        data-target="-0.019395418061787822m 0.6425466341510977m 0.17478896208975375m"
-        data-orbit="-745.5deg 66.06deg 0.0399m"
-        data-header="Kolam renang"
-        data-description="Ayooooo!!!!"
-      >
-        <button class="view-button">7</button>
-        <div class="card">
-          <div class="card-header"></div>
-          <div class="card-body"></div>
-        </div>
-      </div>
-
-      <div
-        class="container"
-        slot="hotspot-9"
-        data-position="0.100121379464659m 0.667528129954249m 0.021615829335636872m"
-        data-normal="0m 1m 0m"
-        data-target="0.100121379464659m 0.667528129954249m 0.021615829335636872m"
-        data-orbit="-766.7deg 70.47deg 0.05839m"
-        data-header="Mushola"
-        data-description="Ada tempat ibadah juga lo"
-      >
-        <button class="view-button">8</button>
-        <div class="card">
-          <div class="card-header"></div>
-          <div class="card-body"></div>
-        </div>
-      </div>
-
-      <div
-        class="container"
-        slot="hotspot-10"
-        data-position="0.06299658859323931m 0.8034024765883889m 0.2072504614438096m"
-        data-normal="0.7082215039685178m 0.2298998016106447m 0.6675090879800493m"
-        data-target="0.06299658859323931m 0.8034024765883889m 0.2072504614438096m"
-        data-orbit="-654.8deg 67.19deg 0.356m"
-        data-header="Burung"
-        data-description="Disini dingin dan sejukk"
-      >
-        <button class="view-button">9</button>
-        <div class="card">
-          <div class="card-header"></div>
-          <div class="card-body"></div>
-        </div>
-      </div>
-
-      <!-- Navigation Buttons -->
-      <div class="button-container">
-        <button class="nav-button" id="prev-button">&#9664;</button>
-        <span class="button-text" id="button-text">Home</span>
-        <button class="nav-button" id="next-button">&#9654;</button>
-      </div>
+      <button class="model-viewer-ar-trigger" slot="ar-button" type="button" tabindex="-1" aria-hidden="true"></button>
     </model-viewer>
 
-    <script type="module" src="main.js"></script>
+    <canvas id="scene"></canvas>
+
+    <div id="topbar">
+      <button id="menu-button" type="button" aria-label="Menu">☰</button>
+      <div>
+        <h1>Dungkluruk AR</h1>
+        <p id="status">Loading model...</p>
+      </div>
+      <button id="enter-ar" type="button" disabled>
+        <span class="enter-ar-label-full">View in your space</span>
+        <span class="enter-ar-label-short">View AR</span>
+      </button>
+    </div>
+
+    <button id="menu-backdrop" class="hidden" type="button" aria-label="Tutup menu"></button>
+
+    <div id="side-menu" class="hidden">
+      <div class="menu-profile">
+        <span></span>
+        <div>
+          <strong>Dungkluruk AR</strong>
+          <small>v1.0.0</small>
+        </div>
+      </div>
+      <nav class="menu-navigation">
+        <button id="menu-home" class="active" type="button">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5v8a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>
+          <span>Beranda</span>
+        </button>
+        <button id="menu-guide" type="button">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8.5 4h7A3.5 3.5 0 0 1 19 7.5v7a3.5 3.5 0 0 1-3.5 3.5H13l-3.5 3v-3h-1A3.5 3.5 0 0 1 5 14.5v-7A3.5 3.5 0 0 1 8.5 4z"/><path d="M9.5 9a2.5 2.5 0 1 1 4 2c-1 .7-1.5 1.1-1.5 2M12 15.8v.2"/></svg>
+          <span>Panduan</span>
+        </button>
+        <button id="menu-about" type="button">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 10v6M12 7.5v.2"/></svg>
+          <span>Tentang</span>
+        </button>
+        <button id="menu-settings" type="button">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1l2-1.5-2-3.4-2.4 1a8 8 0 0 0-1.8-1L14.4 3h-4l-.4 3.1a8 8 0 0 0-1.8 1l-2.4-1-2 3.4 2 1.5a7 7 0 0 0 0 2l-2 1.5 2 3.4 2.4-1a8 8 0 0 0 1.8 1l.4 3.1h4l.4-3.1a8 8 0 0 0 1.8-1l2.4 1 2-3.4-2-1.5a7 7 0 0 0 .1-1z"/></svg>
+          <span>Pengaturan</span>
+        </button>
+      </nav>
+      <button id="menu-exit" type="button" class="danger">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 5H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h5M14 8l4 4-4 4M18 12H8"/></svg>
+        <span>Keluar</span>
+      </button>
+    </div>
+
+    <div id="info-sheet" class="hidden">
+      <div class="sheet-handle"></div>
+      <div class="sheet-head">
+        <h2 id="sheet-title">Panduan</h2>
+        <button id="close-info" type="button" aria-label="Tutup">×</button>
+      </div>
+
+      <section class="sheet-content hidden" data-sheet="home">
+        <div class="home-hero">
+          <span class="home-hero-image"></span>
+          <div>
+            <strong>Jelajahi Dungkluruk AR</strong>
+            <p>Pilih titik lokasi, lihat detail tempat, lalu tempatkan model di ruang nyata.</p>
+          </div>
+        </div>
+        <div class="sheet-actions">
+          <button id="sheet-start-ar" class="primary-action" type="button">Mulai AR</button>
+          <button id="sheet-preview" type="button">Lihat Preview 3D</button>
+        </div>
+        <div class="summary-grid">
+          <div><strong>9</strong><span>Titik wisata</span></div>
+          <div><strong>Dungkluruk</strong><span>Model aktif</span></div>
+          <div><strong id="model-status">Siap</strong><span>Status model</span></div>
+        </div>
+      </section>
+
+      <section class="sheet-content guide-list" data-sheet="guide">
+        <div>
+          <svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="21"/><path d="m28 23-9 9 9 9M19 32h26M36 23l9 9-9 9"/></svg>
+          <span><strong>Pilih titik lokasi</strong><small>Gunakan tombol Next / Prev untuk berpindah tempat.</small></span>
+        </div>
+        <div>
+          <svg viewBox="0 0 64 64" aria-hidden="true"><rect x="12" y="14" width="40" height="34" rx="5"/><path d="M23 54h18M32 48v6M21 25h22M21 32h15"/><circle cx="45" cy="39" r="3"/></svg>
+          <span><strong>Masuk ke mode AR</strong><small>Tekan “View in your space”, lalu arahkan kamera ke lantai.</small></span>
+        </div>
+        <div>
+          <svg viewBox="0 0 64 64" aria-hidden="true"><path d="M10 47h44M17 42l15-8 15 8-15 8zM32 34V15"/><path d="m24 23 8-8 8 8"/><circle cx="32" cy="34" r="4"/></svg>
+          <span><strong>Letakkan model</strong><small>Tap pada permukaan yang sudah terdeteksi dan stabil.</small></span>
+        </div>
+        <div>
+          <svg viewBox="0 0 64 64" aria-hidden="true"><path d="M21 43 11 33l10-10M43 23l10 10-10 10M11 33h42M32 12v40M22 22l10-10 10 10M22 42l10 10 10-10"/><circle cx="32" cy="33" r="7"/></svg>
+          <span><strong>Atur posisi model</strong><small>Geser horizontal untuk rotasi, tahan model lalu geser untuk memindahkan, dan pinch untuk mengubah ukuran.</small></span>
+        </div>
+        <div>
+          <svg viewBox="0 0 64 64" aria-hidden="true"><path d="M14 13h36a5 5 0 0 1 5 5v25a5 5 0 0 1-5 5H31l-12 8v-8h-5a5 5 0 0 1-5-5V18a5 5 0 0 1 5-5z"/><circle cx="25" cy="29" r="6"/><path d="M35 25h12M35 31h12M20 40h27"/></svg>
+          <span><strong>Lihat detail tempat</strong><small>Tap card lokasi untuk membaca informasi lengkap.</small></span>
+        </div>
+      </section>
+
+      <section class="sheet-content hidden" data-sheet="about">
+        <div class="about-copy">
+          <p>Dungkluruk AR adalah aplikasi WebXR yang menampilkan kawasan wisata Dungkluruk dalam bentuk model 3D interaktif dan Augmented Reality.</p>
+          <p>Aplikasi ini membantu pengguna mengenal area wisata secara visual sebelum berkunjung langsung.</p>
+        </div>
+        <dl class="about-meta">
+          <div><dt>Versi</dt><dd>1.0.0</dd></div>
+          <div><dt>Teknologi</dt><dd>WebXR, Three.js, model 3D</dd></div>
+          <div><dt>Dibuat oleh</dt><dd>Tim Dungkluruk AR</dd></div>
+        </dl>
+      </section>
+
+      <section class="sheet-content hidden settings-list" data-sheet="settings">
+        <label><span><strong>Tampilkan label titik</strong><small>Menampilkan nomor lokasi aktif.</small></span><input id="setting-labels" type="checkbox" checked /></label>
+        <label><span><strong>Panduan saat mulai AR</strong><small>Menampilkan perintah pencarian permukaan.</small></span><input id="setting-guide" type="checkbox" checked /></label>
+        <label><span><strong>Ukuran awal model</strong><small>Digunakan saat model ditempatkan.</small></span>
+          <select id="setting-model-size">
+            <option value="0.8">Kecil</option>
+            <option value="1" selected>Normal</option>
+            <option value="1.25">Besar</option>
+          </select>
+        </label>
+        <button id="setting-reset-model" class="setting-command" type="button">Reset posisi model</button>
+      </section>
+
+      <section class="sheet-content hidden detail-sheet" data-sheet="detail">
+        <div class="detail-image" aria-hidden="true"></div>
+        <div class="detail-heading">
+          <span id="detail-number">1</span>
+          <div>
+            <strong id="detail-title">Gunung Merbabu</strong>
+            <small>Titik wisata Dungkluruk</small>
+          </div>
+        </div>
+        <strong class="detail-section-title">Tentang lokasi</strong>
+        <p id="detail-description"></p>
+        <button id="detail-close" type="button">Tutup Detail</button>
+      </section>
+    </div>
+
+    <div id="ar-status" class="hidden">Scan permukaan datar</div>
+
+    <div id="ar-instructions" class="hidden">Gerakkan kamera perlahan ke arah lantai.</div>
+
+    <div id="ar-scan-reticle" class="hidden" aria-hidden="true">
+      <span></span>
+    </div>
+
+    <div id="ar-menu" class="hidden">
+      <button id="replace-model" type="button">Cari tempat lain</button>
+    </div>
+
+    <div id="gesture-hint" class="hidden"></div>
+
+    <div id="focus-direction" class="hidden" aria-hidden="true">▲</div>
+
+    <div id="hotspot-layer"></div>
+
+    <div id="interaction-toolbar" class="hidden">
+      <div data-icon="↔"><strong>Geser horizontal</strong><span>Rotasi</span></div>
+      <div data-icon="✣"><strong>Tahan + geser</strong><span>Pindah</span></div>
+      <div data-icon="↕"><strong>Pinch</strong><span>Ubah ukuran</span></div>
+    </div>
+
+    <div class="button-container">
+      <button class="nav-button" id="prev-button" type="button">&#9664;</button>
+      <span class="button-text" id="button-text">Home</span>
+      <button class="nav-button" id="next-button" type="button">&#9654;</button>
+    </div>
+
+    <div id="nav-dots" aria-hidden="true"></div>
+
     <script type="module" src="app.js"></script>
   </body>
 </html>
