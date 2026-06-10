@@ -3,6 +3,7 @@ import type { Group, Matrix4, Mesh, PerspectiveCamera, Scene, WebGLRenderer } fr
 import type { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import dungklurukUrl from "./assets/dungkluruk.webp";
 import arIconUrl from "./assets/ar_icon.png";
+import allArLogoUrl from "./assets/logo all ar.svg";
 import { THREE } from "./modules/three.js";
 import { projectConfig } from "./modules/config.js";
 import { getDom } from "./modules/dom.js";
@@ -42,6 +43,7 @@ import {
 
 document.documentElement.style.setProperty("--img-dungkluruk", `url("${dungklurukUrl}")`);
 document.documentElement.style.setProperty("--img-ar-icon", `url("${arIconUrl}")`);
+document.documentElement.style.setProperty("--img-all-ar-logo", `url("${allArLogoUrl}")`);
 
 const dom = getDom();
 const { hotspots } = projectConfig;
@@ -73,6 +75,7 @@ let scanStartedAt = 0;
 let scanAdviceIndex = -1;
 let previewHotspotElements: HTMLElement[] = [];
 let supportsWebXrAr = false;
+let supportsQuickLookAr = false;
 let hitTestRetryAfter = 0;
 let hitSampleCursor = 0;
 let hitSampleCount = 0;
@@ -86,18 +89,19 @@ let arFocusRotation: {
 } | null = null;
 let connectionBannerTimeout = 0;
 let wasOffline = !navigator.onLine;
+let loaderStatusObserver: MutationObserver | null = null;
 
-const HIT_SAMPLE_LIMIT = 18;
-const HIT_SAMPLE_MINIMUM = 10;
-const HIT_POSITION_TOLERANCE = 0.025;
-const HIT_READY_POSITION_TOLERANCE = 0.045;
-const HIT_STABLE_DURATION = 350;
+const HIT_SAMPLE_LIMIT = 8;
+const HIT_SAMPLE_MINIMUM = 5;
+const HIT_POSITION_TOLERANCE = 0.12;
+const HIT_READY_POSITION_TOLERANCE = 0.18;
+const HIT_STABLE_DURATION = 180;
 const HIT_UNSTABLE_GRACE = 1200;
 const HIT_LOST_GRACE = 700;
 const HIT_SMOOTHING = 0.22;
 const CARD_HIDE_MODEL_SCALE = 0.82;
 const CARD_SHOW_MODEL_SCALE = 0.9;
-const AR_FOCUS_ROTATION_DURATION = 900;
+const AR_FOCUS_ROTATION_DURATION = 1100;
 const hitSamples = Array.from({ length: HIT_SAMPLE_LIMIT }, () => new THREE.Vector3());
 const smoothedHitPosition = new THREE.Vector3();
 const smoothedHitQuaternion = new THREE.Quaternion();
@@ -137,6 +141,7 @@ init();
 registerServiceWorker();
 
 async function init() {
+  syncAppLoaderStatus();
   setupOverlayGuards();
   setupEvents();
   loadSettings();
@@ -167,6 +172,7 @@ async function init() {
     previewModel.visible = false;
     scene.add(previewModel);
     frameObject(previewModel, controls);
+    preparePlacedModel();
     previewHotspotElements = createModelViewerHotspotElements(
       hotspots,
       dom.modelViewer,
@@ -175,19 +181,40 @@ async function init() {
     );
 
     await waitForCustomElement("model-viewer");
+    dom.statusText.textContent = "Memeriksa dukungan AR";
     await setupArSupport();
     showFirstVisitGuide();
+    hideAppLoader();
   } catch (error) {
     dom.enterArButton.disabled = true;
     dom.sheetStartArButton.disabled = true;
     dom.statusText.textContent = "Aplikasi gagal dimuat. Periksa koneksi lalu muat ulang.";
+    hideAppLoader();
     console.error("Inisialisasi gagal", error);
   }
 }
 
+function syncAppLoaderStatus(): void {
+  const update = (): void => {
+    dom.appLoaderStatus.textContent = dom.statusText.textContent || "Memuat aplikasi...";
+  };
+  update();
+  loaderStatusObserver = new MutationObserver(update);
+  loaderStatusObserver.observe(dom.statusText, { childList: true, characterData: true, subtree: true });
+}
+
+function hideAppLoader(): void {
+  loaderStatusObserver?.disconnect();
+  loaderStatusObserver = null;
+  requestAnimationFrame(() => {
+    dom.appLoader.classList.add("loaded");
+  });
+}
+
 function applyProjectConfig() {
   const { app, model, preview } = projectConfig;
-  const modelScale = `${model.scale} ${model.scale} ${model.scale}`;
+  const previewScale = `${preview.scale} ${preview.scale} ${preview.scale}`;
+  const previewFrame = getResponsivePreviewFrame();
 
   document.title = app.title;
   dom.appTitles.forEach((element) => {
@@ -203,15 +230,29 @@ function applyProjectConfig() {
   dom.modelViewer.setAttribute("ios-src", model.usdzUrl);
   dom.modelViewer.setAttribute("alt", model.alt);
   dom.modelViewer.setAttribute("skybox-image", model.environmentUrl);
-  dom.modelViewer.setAttribute("scale", modelScale);
+  dom.modelViewer.setAttribute("scale", previewScale);
   dom.modelViewer.setAttribute("orientation", model.orientation.map((angle) => `${angle}deg`).join(" "));
-  dom.modelViewer.setAttribute("camera-orbit", preview.homeOrbit);
-  dom.modelViewer.setAttribute("camera-target", preview.homeTarget);
-  dom.modelViewer.setAttribute("field-of-view", preview.fieldOfView);
+  dom.modelViewer.setAttribute("camera-orbit", previewFrame.homeOrbit);
+  dom.modelViewer.setAttribute("camera-target", previewFrame.homeTarget);
+  dom.modelViewer.setAttribute("field-of-view", previewFrame.fieldOfView);
   dom.modelViewer.setAttribute("min-field-of-view", preview.minFieldOfView);
   dom.modelViewer.setAttribute("max-field-of-view", preview.maxFieldOfView);
   dom.modelViewer.setAttribute("exposure", preview.exposure);
   dom.modelViewer.setAttribute("shadow-intensity", preview.shadowIntensity);
+}
+
+function getResponsivePreviewFrame(): {
+  homeOrbit: string;
+  homeTarget: string;
+  fieldOfView: string;
+  hotspotOrbitRadiusScale: number;
+} {
+  const { preview } = projectConfig;
+  return window.innerWidth >= preview.desktopBreakpoint ? preview.desktop : preview.mobile;
+}
+
+function getResponsiveHotspotRadiusScale(): number {
+  return getResponsivePreviewFrame().hotspotOrbitRadiusScale;
 }
 
 function waitForCustomElement(name: string, timeout = 10000): Promise<CustomElementConstructor> {
@@ -240,8 +281,7 @@ function setupEvents() {
   document.addEventListener("click", closePanelsFromOutside);
   document.addEventListener("selectstart", preventTextSelection);
   document.addEventListener("dragstart", preventTextSelection);
-  dom.modelViewer.addEventListener("camera-change", updatePreviewCardWidth);
-  dom.modelViewer.addEventListener("pointerdown", cancelPreviewCameraAnimation);
+  dom.modelViewer.addEventListener("pointerdown", () => cancelPreviewCameraAnimation(true));
   dom.menuButton.addEventListener("click", toggleSideMenu);
   dom.menuBackdrop.addEventListener("click", closeSideMenu);
   dom.menuHomeButton.addEventListener("click", openHome);
@@ -430,33 +470,33 @@ function resetPlacedModel(event: MouseEvent): void {
 }
 
 async function setupArSupport() {
-  const supportsQuickLook = isIosDevice() && typeof dom.modelViewer.activateAR === "function";
+  supportsQuickLookAr = isQuickLookSupported();
 
   if (!navigator.xr || !navigator.xr.isSessionSupported) {
-    dom.enterArButton.disabled = !supportsQuickLook;
-    dom.sheetStartArButton.disabled = !supportsQuickLook;
-    dom.statusText.textContent = supportsQuickLook
+    const canStartAr = supportsQuickLookAr;
+    dom.enterArButton.disabled = !canStartAr;
+    dom.sheetStartArButton.disabled = !canStartAr;
+    dom.statusText.textContent = canStartAr
       ? "Siap untuk AR Quick Look"
-      : "WebXR AR tidak tersedia di browser ini";
+      : "AR tidak didukung di perangkat ini";
     return;
   }
 
   try {
     supportsWebXrAr = await navigator.xr.isSessionSupported("immersive-ar");
-    const canStartAr = supportsWebXrAr || supportsQuickLook;
+    const canStartAr = supportsWebXrAr || supportsQuickLookAr;
     dom.enterArButton.disabled = !canStartAr;
     dom.sheetStartArButton.disabled = !canStartAr;
     dom.statusText.textContent = supportsWebXrAr
       ? "Siap untuk WebXR AR"
-      : supportsQuickLook
+      : supportsQuickLookAr
         ? "Siap untuk AR Quick Look"
-        : "Perangkat belum mendukung AR imersif";
+        : "AR tidak didukung di perangkat ini";
   } catch {
-    dom.enterArButton.disabled = !supportsQuickLook;
-    dom.sheetStartArButton.disabled = !supportsQuickLook;
-    dom.statusText.textContent = supportsQuickLook
-      ? "Siap untuk AR Quick Look"
-      : "Tidak bisa mengecek dukungan WebXR AR";
+    const canStartAr = supportsQuickLookAr;
+    dom.enterArButton.disabled = !canStartAr;
+    dom.sheetStartArButton.disabled = !canStartAr;
+    dom.statusText.textContent = canStartAr ? "Siap untuk AR Quick Look" : "Tidak bisa mengecek dukungan AR";
   }
 }
 
@@ -465,7 +505,7 @@ async function startAr() {
 
   if (
     typeof dom.modelViewer.activateAR === "function" &&
-    (USE_MODEL_VIEWER_WEBXR || (!supportsWebXrAr && isIosDevice()))
+    (USE_MODEL_VIEWER_WEBXR || (!supportsWebXrAr && supportsQuickLookAr))
   ) {
     closeSideMenu();
     dom.infoSheet.classList.add("hidden");
@@ -508,6 +548,7 @@ async function startAr() {
     setArPlacementState("loading");
 
     await renderer.xr.setSession(session);
+    gestureControls.connect();
     setArPlacementState("scanning");
   } catch (error) {
     if (session) {
@@ -530,6 +571,16 @@ async function startAr() {
   }
 }
 
+function isQuickLookSupported(): boolean {
+  const isIosDevice =
+    /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  const isSafari =
+    /Safari/.test(navigator.userAgent) && !/CriOS|FxiOS|EdgiOS|OPiOS|DuckDuckGo/.test(navigator.userAgent);
+
+  return isIosDevice && isSafari && typeof dom.modelViewer.activateAR === "function";
+}
+
 function showAllModelViewerHotspots(): void {
   currentHotspotIndex = -1;
   previewHotspotElements.forEach((element) => {
@@ -540,13 +591,6 @@ function showAllModelViewerHotspots(): void {
   dom.buttonText.textContent = "Beranda";
 }
 
-function isIosDevice(): boolean {
-  return (
-    /iPad|iPhone|iPod/.test(navigator.userAgent) ||
-    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)
-  );
-}
-
 function placeModel(): void {
   if (performance.now() < suppressPlacementUntil) return;
   if (arPlacementState === "placed" || !lastHitMatrix || !modelTemplate) return;
@@ -555,10 +599,11 @@ function placeModel(): void {
   const model = placedModel;
   if (!model) return;
 
+  const placementScale = Number(dom.settingModelSize.value);
   model.visible = true;
   model.position.setFromMatrixPosition(lastHitMatrix);
   model.quaternion.setFromRotationMatrix(lastHitMatrix);
-  model.scale.setScalar(Number(dom.settingModelSize.value));
+  model.scale.setScalar(placementScale);
   model.updateMatrixWorld(true);
 
   setArPlacementState("placed");
@@ -598,7 +643,7 @@ function onArEnded(): void {
   dom.infoSheet.classList.add("hidden");
   clearHitTestSource();
   resetHitStability();
-  gestureControls.clear();
+  gestureControls.disconnect();
   arFocusRotation = null;
   reticle.visible = false;
   dom.enterArButton.classList.remove("hidden");
@@ -606,8 +651,7 @@ function onArEnded(): void {
 
   if (previewModel) previewModel.visible = false;
   if (placedModel) {
-    scene.remove(placedModel);
-    placedModel = null;
+    placedModel.visible = false;
   }
 
   resetPreviewScene();
@@ -702,7 +746,7 @@ function updateHitTest(frame: XRFrame): void {
   } else {
     if (
       (!placedModel || !placedModel.visible) &&
-      lastHitMatrix &&
+      hasSmoothedHit &&
       performance.now() - lastHitSeenAt <= HIT_LOST_GRACE
     ) {
       return;
@@ -838,18 +882,26 @@ function updateHotspotPositions(): void {
   hotspotAnchor.getWorldPosition(hotspotWorldPositionScratch);
   projectWorldToDom(renderer, camera, hotspotWorldPositionScratch, focusedProjection);
 
-  if (focusedProjection.behindCamera) {
+  const hotspotMargin = 36;
+  const isHotspotOnScreen =
+    !focusedProjection.behindCamera &&
+    focusedProjection.screenX >= hotspotMargin &&
+    focusedProjection.screenX <= window.innerWidth - hotspotMargin &&
+    focusedProjection.screenY >= hotspotMargin &&
+    focusedProjection.screenY <= window.innerHeight - hotspotMargin;
+
+  if (!isHotspotOnScreen) {
     element.classList.add("hidden");
   } else {
-    element.classList.remove("hidden");
+    element.style.left = focusedProjection.screenX + "px";
+    element.style.top = focusedProjection.screenY + "px";
     const isCardHidden = element.classList.contains("card-hidden");
     if (!isCardHidden && activeModel.scale.x < CARD_HIDE_MODEL_SCALE) {
       element.classList.add("card-hidden");
     } else if (isCardHidden && activeModel.scale.x > CARD_SHOW_MODEL_SCALE) {
       element.classList.remove("card-hidden");
     }
-    element.style.left = focusedProjection.screenX + "px";
-    element.style.top = focusedProjection.screenY + "px";
+    element.classList.remove("hidden");
   }
 
   updateFocusDirection(
@@ -886,11 +938,25 @@ function selectPreviewHotspot(index: number): void {
 
 function updateHotspotState(focusSelection = true): void {
   setHotspotState(hotspotElements, currentHotspotIndex, dom.buttonText, hotspots);
+  if (isInAR) {
+    hotspotElements.forEach((element) => element.classList.add("hidden"));
+  }
   setHotspotState(previewHotspotElements, currentHotspotIndex, dom.buttonText, hotspots);
   setNavDots(navDotElements, currentHotspotIndex);
   if (focusSelection) {
+    if (!isInAR) hidePreviewHotspots();
     focusSelectedHotspot();
   }
+  if (!focusSelection) requestAnimationFrame(updatePreviewCardWidth);
+}
+
+function hidePreviewHotspots(): void {
+  previewHotspotElements.forEach((element) => element.classList.add("hidden"));
+}
+
+function revealSelectedPreviewHotspot(): void {
+  if (isInAR) return;
+  setHotspotState(previewHotspotElements, currentHotspotIndex, dom.buttonText, hotspots);
   requestAnimationFrame(updatePreviewCardWidth);
 }
 
@@ -932,29 +998,35 @@ function resetPreviewScene(): void {
     previewModel.updateMatrixWorld(true);
   }
 
-  setModelViewerCamera(projectConfig.preview.homeOrbit, projectConfig.preview.homeTarget, false);
+  const previewFrame = getResponsivePreviewFrame();
+  dom.modelViewer.setAttribute("field-of-view", previewFrame.fieldOfView);
+  setModelViewerCamera(previewFrame.homeOrbit, previewFrame.homeTarget, false);
   if (!camera || !controls) return;
 
   resetPreviewCamera(camera, controls, previewModel);
   updateHotspotPositions();
 }
 
-function focusSelectedHotspot(): void {
+function focusSelectedHotspot(animate = true): void {
   if (isInAR) {
     focusSelectedArHotspot();
     return;
   }
 
   if (currentHotspotIndex === -1) {
-    setModelViewerCamera(projectConfig.preview.homeOrbit, projectConfig.preview.homeTarget);
+    const previewFrame = getResponsivePreviewFrame();
+    dom.modelViewer.setAttribute("field-of-view", previewFrame.fieldOfView);
+    setModelViewerCamera(previewFrame.homeOrbit, previewFrame.homeTarget, animate);
     return;
   }
 
+  dom.modelViewer.setAttribute("field-of-view", getResponsivePreviewFrame().fieldOfView);
   const hotspot = hotspots[currentHotspotIndex];
   if (!hotspot) return;
   const target = hotspot.position.x + "m " + hotspot.position.y + "m " + hotspot.position.z + "m";
-  const orbit = hotspot.orbit.theta + "deg " + hotspot.orbit.phi + "deg " + hotspot.orbit.radius + "m";
-  setModelViewerCamera(orbit, target);
+  const radius = hotspot.orbit.radius * getResponsiveHotspotRadiusScale();
+  const orbit = hotspot.orbit.theta + "deg " + hotspot.orbit.phi + "deg " + radius + "m";
+  setModelViewerCamera(orbit, target, animate);
 }
 
 function focusSelectedArHotspot(): void {
@@ -1018,9 +1090,10 @@ function updateArFocusRotation(timestamp: number): void {
 function setModelViewerCamera(orbit: string, target: string, animate = true): void {
   if (!dom.modelViewer) return;
   if (!animate || typeof dom.modelViewer.getCameraOrbit !== "function") {
-    cancelPreviewCameraAnimation();
+    cancelPreviewCameraAnimation(false);
     dom.modelViewer.setAttribute("camera-orbit", orbit);
     dom.modelViewer.setAttribute("camera-target", target);
+    revealSelectedPreviewHotspot();
     return;
   }
 
@@ -1028,12 +1101,17 @@ function setModelViewerCamera(orbit: string, target: string, animate = true): vo
 }
 
 function animateModelViewerCamera(orbit: string, target: string): void {
-  cancelPreviewCameraAnimation();
+  cancelPreviewCameraAnimation(false);
 
   const getCameraOrbit = dom.modelViewer.getCameraOrbit;
   const getCameraTarget = dom.modelViewer.getCameraTarget;
   const jumpMethod = dom.modelViewer.jumpCameraToGoal;
-  if (!getCameraOrbit || !getCameraTarget || !jumpMethod) return;
+  if (!getCameraOrbit || !getCameraTarget || !jumpMethod) {
+    dom.modelViewer.setAttribute("camera-orbit", orbit);
+    dom.modelViewer.setAttribute("camera-target", target);
+    revealSelectedPreviewHotspot();
+    return;
+  }
   const jumpCameraToGoal = (): void => jumpMethod.call(dom.modelViewer);
   const fromOrbit = getCameraOrbit.call(dom.modelViewer);
   const fromTarget = getCameraTarget.call(dom.modelViewer);
@@ -1061,16 +1139,19 @@ function animateModelViewerCamera(orbit: string, target: string): void {
       previewCameraAnimationFrame = requestAnimationFrame(update);
     } else {
       previewCameraAnimationFrame = 0;
+      revealSelectedPreviewHotspot();
     }
   }
 
   previewCameraAnimationFrame = requestAnimationFrame(update);
 }
 
-function cancelPreviewCameraAnimation(): void {
-  if (!previewCameraAnimationFrame) return;
-  cancelAnimationFrame(previewCameraAnimationFrame);
-  previewCameraAnimationFrame = 0;
+function cancelPreviewCameraAnimation(revealHotspot: boolean): void {
+  if (previewCameraAnimationFrame) {
+    cancelAnimationFrame(previewCameraAnimationFrame);
+    previewCameraAnimationFrame = 0;
+  }
+  if (revealHotspot) revealSelectedPreviewHotspot();
 }
 
 function parseOrbit(value: string): CameraOrbit {
@@ -1124,5 +1205,12 @@ function onResize(): void {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
+  if (!isInAR && currentHotspotIndex === -1) {
+    const previewFrame = getResponsivePreviewFrame();
+    dom.modelViewer.setAttribute("field-of-view", previewFrame.fieldOfView);
+    setModelViewerCamera(previewFrame.homeOrbit, previewFrame.homeTarget, false);
+  } else if (!isInAR) {
+    focusSelectedHotspot(false);
+  }
   requestAnimationFrame(updatePreviewCardWidth);
 }

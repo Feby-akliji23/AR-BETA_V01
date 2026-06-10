@@ -258,12 +258,24 @@ export function setupArGestures(options: ArGestureOptions) {
     if (hideHint) options.hideHintSoon();
   }
 
-  document.body.addEventListener("touchstart", onTouchStart, { passive: false });
-  document.body.addEventListener("touchmove", onTouchMove, { passive: false });
-  document.body.addEventListener("touchend", onTouchEnd, { passive: false });
-  document.body.addEventListener("touchcancel", onTouchEnd, { passive: false });
+  function connect(): void {
+    document.body.addEventListener("touchstart", onTouchStart, { passive: false });
+    document.body.addEventListener("touchmove", onTouchMove, { passive: false });
+    document.body.addEventListener("touchend", onTouchEnd, { passive: false });
+    document.body.addEventListener("touchcancel", onTouchEnd, { passive: false });
+  }
+
+  function disconnect(): void {
+    clearGesture(false);
+    document.body.removeEventListener("touchstart", onTouchStart);
+    document.body.removeEventListener("touchmove", onTouchMove);
+    document.body.removeEventListener("touchend", onTouchEnd);
+    document.body.removeEventListener("touchcancel", onTouchEnd);
+  }
 
   return {
+    connect,
+    disconnect,
     clear() {
       clearGesture(false);
     },

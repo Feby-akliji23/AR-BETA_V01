@@ -15,6 +15,8 @@ export function getDom() {
     modelName: byId<HTMLElement>("active-model-name"),
     hotspotCount: byId<HTMLElement>("hotspot-count"),
     statusText: byId<HTMLElement>("status"),
+    appLoader: byId<HTMLElement>("app-loader"),
+    appLoaderStatus: byId<HTMLElement>("app-loader-status"),
     connectionBanner: byId<HTMLElement>("connection-banner"),
     enterArButton: byId<HTMLButtonElement>("enter-ar"),
     arStatus: byId<HTMLElement>("ar-status"),

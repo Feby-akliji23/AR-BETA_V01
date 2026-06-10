@@ -30,13 +30,19 @@
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="icon" href="./assets/app-icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="./assets/ar_icon.png" />
-    <link rel="stylesheet" type="text/css" href="style.css" />
+    <link rel="stylesheet" href="./style.css" />
   </head>
   <body>
+    <div id="app-loader" role="status" aria-live="polite">
+      <img src="./assets/Logo ar.svg" alt="" aria-hidden="true" />
+      <strong>Dungkluruk AR</strong>
+      <p id="app-loader-status">Memuat aplikasi...</p>
+    </div>
+
     <model-viewer
       id="model-viewer"
       camera-controls
-      interpolation-decay="200"
+      interaction-prompt="none"
       min-camera-orbit="auto auto 5%"
       xr-environment
       ar
@@ -139,7 +145,7 @@
           <button id="sheet-preview" type="button">Lihat Pratinjau 3D</button>
         </div>
         <div class="summary-grid">
-          <div><strong id="hotspot-count">9</strong><span>Titik wisata</span></div>
+          <div><strong id="hotspot-count">10</strong><span>Titik wisata</span></div>
           <div><strong id="active-model-name">Dungkluruk</strong><span>Model aktif</span></div>
           <div><strong id="model-status">Siap</strong><span>Status model</span></div>
         </div>
@@ -254,6 +260,13 @@
             </svg>
             Tentang Aplikasi
           </span>
+          <div class="about-ar-platforms">
+            <span
+              class="about-ar-platforms-logo"
+              role="img"
+              aria-label="Logo teknologi Augmented Reality yang didukung"
+            ></span>
+          </div>
           <h3>Dungkluruk AR</h3>
           <p>
             Dungkluruk AR adalah aplikasi WebXR yang menampilkan kawasan wisata Dungkluruk dalam bentuk model

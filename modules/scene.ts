@@ -209,24 +209,22 @@ export function createModelInstance(
 ): ArModel {
   const root = new THREE.Group() as ArModel;
   const coordinateSpace = new THREE.Group();
+  const modelSpace = new THREE.Group();
   const model = modelTemplate.clone(true);
-  model.scale.setScalar(modelConfig.scale);
+  modelSpace.scale.setScalar(modelConfig.scale);
   const [roll, pitch, yaw] = modelConfig.orientation.map(THREE.MathUtils.degToRad);
-  model.quaternion.setFromEuler(new THREE.Euler(pitch, yaw, roll, "YXZ"));
-  coordinateSpace.add(model);
+  modelSpace.quaternion.setFromEuler(new THREE.Euler(pitch, yaw, roll, "YXZ"));
+  modelSpace.add(model);
+  coordinateSpace.add(modelSpace);
   root.add(coordinateSpace);
 
-  const box = new THREE.Box3().setFromObject(model);
+  const box = new THREE.Box3().setFromObject(modelSpace);
   const center = box.getCenter(new THREE.Vector3());
   coordinateSpace.position.set(-center.x, -box.min.y, -center.z);
-  root.updateMatrixWorld(true);
 
   root.userData.coordinateAnchor = coordinateSpace;
-  root.userData.hotspotAnchors = createHotspotAnchors(
-    coordinateSpace,
-    hotspotDefinitions,
-    showHotspotMarkers
-  );
+  root.userData.hotspotAnchors = createHotspotAnchors(modelSpace, hotspotDefinitions, showHotspotMarkers);
+  root.updateMatrixWorld(true);
   root.userData.baseScale = modelConfig.scale;
   root.userData.interactionPlaneY =
     coordinateSpace.position.y + modelConfig.interactionPlaneY * modelConfig.scale;
@@ -235,7 +233,7 @@ export function createModelInstance(
 }
 
 function createHotspotAnchors(
-  coordinateSpace: Group,
+  modelSpace: Group,
   hotspotDefinitions: HotspotConfig[],
   showMarkers: boolean
 ): Object3D[] {
@@ -252,7 +250,7 @@ function createHotspotAnchors(
     const anchor = new THREE.Object3D();
     anchor.name = `hotspot-anchor-${index + 1}`;
     anchor.position.set(hotspot.position.x, hotspot.position.y, hotspot.position.z);
-    coordinateSpace.add(anchor);
+    modelSpace.add(anchor);
 
     if (markerGeometry && markerMaterial) {
       const marker = new THREE.Mesh(markerGeometry, markerMaterial);

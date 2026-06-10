@@ -47,9 +47,20 @@ export interface ProjectConfig {
     interactionPlaneY: number;
   };
   preview: {
-    homeOrbit: string;
-    homeTarget: string;
-    fieldOfView: string;
+    scale: number;
+    desktopBreakpoint: number;
+    mobile: {
+      homeOrbit: string;
+      homeTarget: string;
+      fieldOfView: string;
+      hotspotOrbitRadiusScale: number;
+    };
+    desktop: {
+      homeOrbit: string;
+      homeTarget: string;
+      fieldOfView: string;
+      hotspotOrbitRadiusScale: number;
+    };
     minFieldOfView: string;
     maxFieldOfView: string;
     exposure: string;
@@ -95,6 +106,8 @@ export interface GestureIndicator {
 
 export interface GestureControls {
   clear: () => void;
+  connect: () => void;
+  disconnect: () => void;
 }
 
 export interface ArGestureOptions {

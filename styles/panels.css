@@ -174,6 +174,21 @@
   gap: 14px;
 }
 
+.about-ar-platforms {
+  margin-top: 20px;
+}
+
+.about-ar-platforms-logo {
+  display: block;
+  width: 100%;
+  height: 38px;
+  background: var(--img-all-ar-logo) left center / contain no-repeat;
+}
+
+.about-ar-platforms + h3 {
+  margin-top: 14px;
+}
+
 .about-meta {
   display: grid;
   gap: 10px;
