@@ -1,9 +1,12 @@
 import { THREE } from "./three.js";
 import { projectConfig } from "./config.js";
+import type { Group, Object3D, PerspectiveCamera, Scene, Vector3, WebGLRenderer } from "three";
+import type { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
+import type { ArModel, GestureIndicator, GestureType, HotspotConfig, SurfaceGrid } from "./types.js";
 
 const { model: modelConfig } = projectConfig;
 
-export function createThreeScene(canvas) {
+export function createThreeScene(canvas: HTMLCanvasElement) {
   const scene = new THREE.Scene();
   scene.background = null;
 
@@ -30,7 +33,7 @@ export function createThreeScene(canvas) {
   return { scene, camera, renderer, controls };
 }
 
-export function addLights(scene) {
+export function addLights(scene: Scene): void {
   scene.add(new THREE.HemisphereLight(0xffffff, 0x8c97a3, 1.1));
 
   const directional = new THREE.DirectionalLight(0xffffff, 3.2);
@@ -38,7 +41,7 @@ export function addLights(scene) {
   scene.add(directional);
 }
 
-export function createReticle(scene) {
+export function createReticle(scene: Scene) {
   const reticle = new THREE.Mesh(
     new THREE.RingGeometry(0.12, 0.15, 32).rotateX(-Math.PI / 2),
     new THREE.MeshBasicMaterial({ color: 0xffffff })
@@ -49,8 +52,8 @@ export function createReticle(scene) {
   return reticle;
 }
 
-export function createSurfaceGrid(scene) {
-  const group = new THREE.Group();
+export function createSurfaceGrid(scene: Scene): SurfaceGrid {
+  const group = new THREE.Group() as SurfaceGrid;
   const surface = new THREE.Mesh(
     new THREE.PlaneGeometry(1.6, 1.6).rotateX(-Math.PI / 2),
     new THREE.MeshBasicMaterial({
@@ -77,7 +80,7 @@ export function createSurfaceGrid(scene) {
   return group;
 }
 
-export function createGestureIndicator(scene) {
+export function createGestureIndicator(scene: Scene): GestureIndicator {
   const group = new THREE.Group();
   const ringMaterial = new THREE.MeshBasicMaterial({
     color: 0xdff8ff,
@@ -91,11 +94,8 @@ export function createGestureIndicator(scene) {
   const headingMaterial = ringMaterial.clone();
   headingMaterial.color.setHex(0xffffff);
   headingMaterial.opacity = 1;
-  const ring = new THREE.Mesh(
-    new THREE.RingGeometry(0.92, 1, 64).rotateX(-Math.PI / 2),
-    ringMaterial
-  );
-  const markers = [];
+  const ring = new THREE.Mesh(new THREE.RingGeometry(0.92, 1, 64).rotateX(-Math.PI / 2), ringMaterial);
+  const markers: Object3D[] = [];
   const headingMarker = new THREE.Mesh(
     new THREE.CircleGeometry(0.13, 24).rotateX(-Math.PI / 2),
     headingMaterial
@@ -104,11 +104,8 @@ export function createGestureIndicator(scene) {
 
   group.add(ring);
   for (let index = 0; index < 4; index += 1) {
-    const marker = new THREE.Mesh(
-      new THREE.CircleGeometry(0.075, 20).rotateX(-Math.PI / 2),
-      markerMaterial
-    );
-    const angle = index * Math.PI / 2;
+    const marker = new THREE.Mesh(new THREE.CircleGeometry(0.075, 20).rotateX(-Math.PI / 2), markerMaterial);
+    const angle = (index * Math.PI) / 2;
     marker.position.set(Math.cos(angle) * 1.16, 0, Math.sin(angle) * 1.16);
     group.add(marker);
     markers.push(marker);
@@ -119,8 +116,7 @@ export function createGestureIndicator(scene) {
   group.renderOrder = 20;
   scene.add(group);
 
-  function sync(model, type) {
-    if (!model) return;
+  function sync(model: ArModel, type: Exclude<GestureType, "pending-model">): void {
     model.updateMatrixWorld(true);
     const bounds = model.userData.localBounds;
     const localCenter = bounds ? bounds.getCenter(new THREE.Vector3()) : new THREE.Vector3();
@@ -161,7 +157,7 @@ export function createGestureIndicator(scene) {
   };
 }
 
-export async function setupEnvironment(scene, renderer) {
+export async function setupEnvironment(scene: Scene, renderer: WebGLRenderer): Promise<void> {
   try {
     const rgbeLoader = new THREE.RGBELoader();
     const texture = await rgbeLoader.loadAsync(modelConfig.environmentUrl);
@@ -177,7 +173,7 @@ export async function setupEnvironment(scene, renderer) {
   }
 }
 
-export async function loadModel(statusText) {
+export async function loadModel(statusText: HTMLElement): Promise<Group> {
   const dracoLoader = new THREE.DRACOLoader();
   dracoLoader.setDecoderPath(modelConfig.dracoDecoderUrl);
 
@@ -185,10 +181,18 @@ export async function loadModel(statusText) {
   gltfLoader.setDRACOLoader(dracoLoader);
 
   try {
-    const gltf = await gltfLoader.loadAsync(modelConfig.glbUrl);
+    const gltf = await gltfLoader.loadAsync(modelConfig.glbUrl, (event) => {
+      if (event.total > 0) {
+        const percentage = Math.min(100, Math.round((event.loaded / event.total) * 100));
+        statusText.textContent = `Memuat model ${percentage}%`;
+        return;
+      }
+      const loadedMb = (event.loaded / 1024 / 1024).toFixed(1);
+      statusText.textContent = `Memuat model ${loadedMb} MB`;
+    });
     const modelTemplate = gltf.scene;
     modelTemplate.traverse((child) => {
-      if (child.isMesh) child.frustumCulled = false;
+      if ("isMesh" in child && child.isMesh) child.frustumCulled = false;
     });
     statusText.textContent = "Model siap";
     return modelTemplate;
@@ -198,8 +202,12 @@ export async function loadModel(statusText) {
   }
 }
 
-export function createModelInstance(modelTemplate, hotspotDefinitions = [], showHotspotMarkers = false) {
-  const root = new THREE.Group();
+export function createModelInstance(
+  modelTemplate: Group,
+  hotspotDefinitions: HotspotConfig[] = [],
+  showHotspotMarkers = false
+): ArModel {
+  const root = new THREE.Group() as ArModel;
   const coordinateSpace = new THREE.Group();
   const model = modelTemplate.clone(true);
   model.scale.setScalar(modelConfig.scale);
@@ -226,10 +234,18 @@ export function createModelInstance(modelTemplate, hotspotDefinitions = [], show
   return root;
 }
 
-function createHotspotAnchors(coordinateSpace, hotspotDefinitions, showMarkers) {
+function createHotspotAnchors(
+  coordinateSpace: Group,
+  hotspotDefinitions: HotspotConfig[],
+  showMarkers: boolean
+): Object3D[] {
   const markerGeometry = showMarkers ? new THREE.SphereGeometry(0.012, 12, 12) : null;
   const markerMaterial = showMarkers
-    ? new THREE.MeshBasicMaterial({ color: 0xff1744, depthTest: false, depthWrite: false })
+    ? new THREE.MeshBasicMaterial({
+        color: 0xff1744,
+        depthTest: false,
+        depthWrite: false,
+      })
     : null;
 
   return hotspotDefinitions.map((hotspot, index) => {
@@ -238,7 +254,7 @@ function createHotspotAnchors(coordinateSpace, hotspotDefinitions, showMarkers) 
     anchor.position.set(hotspot.position.x, hotspot.position.y, hotspot.position.z);
     coordinateSpace.add(anchor);
 
-    if (showMarkers) {
+    if (markerGeometry && markerMaterial) {
       const marker = new THREE.Mesh(markerGeometry, markerMaterial);
       marker.renderOrder = 1000;
       anchor.add(marker);
@@ -248,14 +264,14 @@ function createHotspotAnchors(coordinateSpace, hotspotDefinitions, showMarkers) 
   });
 }
 
-export function frameObject(object, controls) {
+export function frameObject(object: Object3D, controls: OrbitControls): void {
   const box = new THREE.Box3().setFromObject(object);
   const size = box.getSize(new THREE.Vector3());
   controls.target.set(0, size.y * 0.45, 0);
   controls.update();
 }
 
-export function getPreviewHomeTarget(previewModel) {
+export function getPreviewHomeTarget(previewModel: Object3D | null): Vector3 {
   if (!previewModel) return new THREE.Vector3(0, 0.45, 0);
 
   const box = new THREE.Box3().setFromObject(previewModel);
@@ -264,7 +280,11 @@ export function getPreviewHomeTarget(previewModel) {
   return new THREE.Vector3(center.x, size.y * 0.45, center.z);
 }
 
-export function resetPreviewCamera(camera, controls, previewModel) {
+export function resetPreviewCamera(
+  camera: PerspectiveCamera,
+  controls: OrbitControls,
+  previewModel: Object3D | null
+): void {
   const target = getPreviewHomeTarget(previewModel);
   camera.position.set(0.7, 0.9, 1.7);
   camera.rotation.set(0, 0, 0);

@@ -1,6 +1,9 @@
 import { defineConfig, loadEnv } from "vite";
 import { resolve, join } from "path";
-import { copyFileSync, mkdirSync, existsSync, readdirSync, statSync } from "fs";
+import { copyFileSync, mkdirSync, existsSync, readFileSync, readdirSync, statSync, writeFileSync } from "fs";
+
+const { version: appVersion } = JSON.parse(readFileSync(resolve("package.json"), "utf8"));
+const buildId = `${appVersion}-${Date.now().toString(36)}`;
 
 function copyDracoPlugin() {
   return {
@@ -18,11 +21,23 @@ function copyDracoPlugin() {
   };
 }
 
+function versionServiceWorkerPlugin() {
+  return {
+    name: "version-service-worker",
+    closeBundle() {
+      const serviceWorkerPath = resolve("dist/sw.js");
+      if (!existsSync(serviceWorkerPath)) return;
+      const source = readFileSync(serviceWorkerPath, "utf8");
+      writeFileSync(serviceWorkerPath, source.replaceAll("__APP_VERSION__", buildId));
+    },
+  };
+}
+
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
   return {
     base: process.env.GITHUB_ACTIONS ? "/AR-BETA_V01/" : "/",
-    plugins: [copyDracoPlugin()],
+    plugins: [copyDracoPlugin(), versionServiceWorkerPlugin()],
     server: {
       host: true,
       allowedHosts: env.ALLOWED_HOSTS ? env.ALLOWED_HOSTS.split(",") : [],

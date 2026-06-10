@@ -1,0 +1,4 @@
+dist/
+node_modules/
+public/assets/draco/
+package-lock.json

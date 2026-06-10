@@ -1,0 +1,215 @@
+#topbar {
+  position: fixed;
+  top: clamp(10px, 2.4vw, 18px);
+  left: clamp(10px, 3vw, 22px);
+  right: clamp(10px, 3vw, 22px);
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: clamp(8px, 2.4vw, 16px);
+  border: 1px solid rgba(255, 255, 255, 0.42);
+  border-radius: 16px;
+  padding: 7px 9px;
+  background: rgba(255, 255, 255, 0.58);
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.16);
+  backdrop-filter: blur(14px);
+  pointer-events: none;
+}
+
+body.ar-active #topbar {
+  top: max(calc(env(safe-area-inset-top) + 12px), 18px);
+  left: clamp(8px, 2.4vw, 16px);
+  right: clamp(8px, 2.4vw, 16px);
+  border: 1px solid rgba(255, 255, 255, 0.32);
+  border-radius: 16px;
+  padding: 7px 9px;
+  color: #ffffff;
+  background: rgba(17, 24, 39, 0.42);
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.2);
+  backdrop-filter: blur(14px);
+}
+
+body.ar-active #topbar #status {
+  display: none;
+}
+
+body.ar-active #menu-button {
+  width: clamp(34px, 8vw, 40px);
+  height: clamp(34px, 8vw, 40px);
+  border: 1px solid rgba(255, 255, 255, 0.26);
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.14);
+  box-shadow: none;
+}
+
+#menu-button {
+  display: grid;
+  width: clamp(38px, 8.8vw, 46px);
+  height: clamp(38px, 8.8vw, 46px);
+  flex: 0 0 auto;
+  place-items: center;
+  border: 0;
+  border-radius: 12px;
+  color: #1f2937;
+  background: rgba(255, 255, 255, 0.78);
+  box-shadow: 0 10px 26px rgba(15, 23, 42, 0.14);
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+#menu-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 34;
+  border: 0;
+  padding: 0;
+  background: rgba(15, 23, 42, 0.12);
+  pointer-events: auto;
+}
+
+#connection-banner {
+  position: fixed;
+  top: clamp(72px, 16vw, 88px);
+  left: 50%;
+  z-index: 40;
+  width: min(420px, calc(100vw - 28px));
+  transform: translateX(-50%);
+  border-radius: 10px;
+  padding: 10px 14px;
+  color: #ffffff;
+  background: rgba(31, 41, 55, 0.94);
+  box-shadow: 0 10px 26px rgba(15, 23, 42, 0.18);
+  text-align: center;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.4;
+  pointer-events: none;
+}
+
+#connection-banner.online {
+  background: rgba(22, 101, 52, 0.94);
+}
+
+#side-menu {
+  position: fixed;
+  top: clamp(62px, 14vw, 78px);
+  left: clamp(8px, 2.4vw, 16px);
+  z-index: 35;
+  display: flex;
+  width: clamp(214px, 22vw, 278px);
+  flex-direction: column;
+  border: 1px solid rgba(82, 74, 60, 0.18);
+  border-radius: 9px;
+  padding: 12px 10px 10px;
+  color: #111827;
+  background: #fffaf0;
+  box-shadow: 0 10px 26px rgba(15, 23, 42, 0.18);
+  font-size: 11px;
+  line-height: 1.35;
+  pointer-events: auto;
+  animation: menu-enter 180ms ease-out;
+}
+
+body.ar-active #side-menu {
+  top: clamp(66px, 15vw, 82px);
+  min-height: 300px;
+  border-color: rgba(255, 255, 255, 0.45);
+  background: rgba(255, 250, 240, 0.98);
+}
+
+.menu-navigation {
+  display: grid;
+  gap: 3px;
+}
+
+#side-menu button {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 38px;
+  border: 0;
+  border-radius: 8px;
+  padding: 0 9px;
+  text-align: left;
+  color: #20242b;
+  background: transparent;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+#side-menu button svg {
+  width: 17px;
+  height: 17px;
+  flex: 0 0 auto;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+}
+
+#side-menu button:hover,
+#side-menu button.active {
+  background: #ebe8e1;
+}
+
+#side-menu .danger {
+  width: 100%;
+  margin-top: auto;
+  border-top: 1px solid rgba(15, 23, 42, 0.1);
+  border-radius: 0;
+  padding-top: 9px;
+  color: #dc2626;
+}
+
+body:not(.ar-active) #side-menu .danger {
+  display: none;
+}
+
+.menu-profile {
+  display: flex;
+  gap: 9px;
+  align-items: center;
+  padding: 2px 7px 12px;
+}
+
+.menu-profile > span {
+  width: 38px;
+  height: 38px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background-image: var(--img-dungkluruk);
+  background-position: center;
+  background-size: cover;
+}
+
+.menu-profile div,
+.menu-profile strong,
+.menu-profile small {
+  display: block;
+}
+
+.menu-profile strong {
+  font-size: 11px;
+  line-height: 1.2;
+}
+
+.menu-profile small {
+  margin-top: 2px;
+  color: #4b5563;
+  font-size: 9px;
+}
+
+@keyframes menu-enter {
+  from {
+    opacity: 0;
+    transform: translateX(-8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}

@@ -1,9 +1,13 @@
+import type { HotspotConfig, ProjectConfig } from "./types";
+
 // Edit this file when replacing the model, hotspot coordinates, or card content.
-export const hotspots = [
+// Add imageUrl to a hotspot to use a location-specific card and detail image.
+export const hotspots: HotspotConfig[] = [
   {
     header: "Gunung Merbabu",
     description: "Tempat selfie di awan, tapi hati-hati sama anginnya!",
-    detail: "Gunung Merbabu menjadi latar utama kawasan Dungkluruk. Titik ini cocok untuk menikmati bentuk pegunungan, mengenali arah kawasan, dan mengambil foto dari sudut pandang yang lebih luas.",
+    detail:
+      "Gunung Merbabu menjadi latar utama kawasan Dungkluruk. Titik ini cocok untuk menikmati bentuk pegunungan, mengenali arah kawasan, dan mengambil foto dari sudut pandang yang lebih luas.",
     buttonText: "1",
     position: { x: 0.16461349837559763, y: 0.7458151780932667, z: -0.1366888814003465 },
     normal: { x: 0.9686974739857849, y: 0.23764112651768846, z: 0.07177672938330272 },
@@ -12,7 +16,8 @@ export const hotspots = [
   {
     header: "Pendopo",
     description: "Debat seru sambil ngopi, siapa takut?",
-    detail: "Pendopo merupakan area berkumpul dan beristirahat. Pengunjung dapat duduk santai, berbincang, serta menikmati suasana kawasan sebelum melanjutkan perjalanan ke titik wisata lainnya.",
+    detail:
+      "Pendopo merupakan area berkumpul dan beristirahat. Pengunjung dapat duduk santai, berbincang, serta menikmati suasana kawasan sebelum melanjutkan perjalanan ke titik wisata lainnya.",
     buttonText: "2",
     position: { x: 0.07027693438109316, y: 0.6641265398779596, z: 0.09594816485251578 },
     normal: { x: -0.023429991294623465, y: 0.9994364333290694, z: -0.02403854076873244 },
@@ -21,7 +26,8 @@ export const hotspots = [
   {
     header: "Parkir",
     description: "Spot parkir luas dan aman. Mobil kamu juga butuh tempat istirahat yang nyaman!",
-    detail: "Area parkir menjadi titik awal kunjungan ke Dungkluruk. Lokasinya dirancang agar kendaraan dapat ditempatkan dengan rapi sebelum pengunjung menjelajahi kawasan wisata.",
+    detail:
+      "Area parkir menjadi titik awal kunjungan ke Dungkluruk. Lokasinya dirancang agar kendaraan dapat ditempatkan dengan rapi sebelum pengunjung menjelajahi kawasan wisata.",
     buttonText: "3",
     position: { x: 0.005953002438934624, y: 0.6179612413398688, z: 0.39772135629382144 },
     normal: { x: -0.02845223752207031, y: 0.8863604679399255, z: 0.46212075375739653 },
@@ -30,7 +36,8 @@ export const hotspots = [
   {
     header: "Gardupandang",
     description: "Hijau-hijau santai, selfie yuk!",
-    detail: "Gardupandang menawarkan tempat untuk melihat kawasan dari sudut yang lebih terbuka. Area ini cocok untuk bersantai, menikmati pemandangan hijau, dan mengambil foto.",
+    detail:
+      "Gardupandang menawarkan tempat untuk melihat kawasan dari sudut yang lebih terbuka. Area ini cocok untuk bersantai, menikmati pemandangan hijau, dan mengambil foto.",
     buttonText: "4",
     position: { x: 0.03181884750054354, y: 0.6724909836216408, z: 0.00020099485950251378 },
     normal: { x: 0, y: 1, z: 0 },
@@ -39,7 +46,8 @@ export const hotspots = [
   {
     header: "Toko-Toko",
     description: "Belanja sampe dompet nyerah!",
-    detail: "Area toko menyediakan tempat bagi pengunjung untuk melihat dan membeli produk yang tersedia di kawasan Dungkluruk. Titik ini dapat dikunjungi sebelum pulang atau setelah selesai berkeliling.",
+    detail:
+      "Area toko menyediakan tempat bagi pengunjung untuk melihat dan membeli produk yang tersedia di kawasan Dungkluruk. Titik ini dapat dikunjungi sebelum pulang atau setelah selesai berkeliling.",
     buttonText: "5",
     position: { x: 0.032752926938190534, y: 0.63354956207212, z: 0.31799526415099294 },
     normal: { x: 0.8282171135486284, y: 0, z: 0.5604073632860104 },
@@ -48,7 +56,8 @@ export const hotspots = [
   {
     header: "Kalipasang",
     description: "Ini hutan pohon pinus!",
-    detail: "Kalipasang merupakan area yang dikelilingi pepohonan pinus. Suasananya teduh dan cocok untuk menikmati udara segar serta mengenali karakter alam kawasan Dungkluruk.",
+    detail:
+      "Kalipasang merupakan area yang dikelilingi pepohonan pinus. Suasananya teduh dan cocok untuk menikmati udara segar serta mengenali karakter alam kawasan Dungkluruk.",
     buttonText: "6",
     position: { x: 0.32811722861362963, y: 0.7051921130909486, z: 0.08796013053280755 },
     normal: { x: -0.46139601533440144, y: 0.04814640729012375, z: -0.8858869230881503 },
@@ -57,7 +66,8 @@ export const hotspots = [
   {
     header: "Kolam renang",
     description: "Ayooooo!!!!",
-    detail: "Kolam renang menjadi salah satu fasilitas rekreasi di kawasan Dungkluruk. Titik ini dapat digunakan pengunjung untuk bermain air dan beristirahat bersama keluarga.",
+    detail:
+      "Kolam renang menjadi salah satu fasilitas rekreasi di kawasan Dungkluruk. Titik ini dapat digunakan pengunjung untuk bermain air dan beristirahat bersama keluarga.",
     buttonText: "7",
     position: { x: -0.019395418061787822, y: 0.6425466341510977, z: 0.17478896208975375 },
     normal: { x: 0, y: 1, z: 0 },
@@ -66,7 +76,8 @@ export const hotspots = [
   {
     header: "Mushola",
     description: "Ada tempat ibadah juga lo",
-    detail: "Mushola menyediakan tempat ibadah bagi pengunjung selama berada di kawasan wisata. Lokasinya dapat dikenali melalui model agar lebih mudah ditemukan saat berkunjung.",
+    detail:
+      "Mushola menyediakan tempat ibadah bagi pengunjung selama berada di kawasan wisata. Lokasinya dapat dikenali melalui model agar lebih mudah ditemukan saat berkunjung.",
     buttonText: "8",
     position: { x: 0.100121379464659, y: 0.667528129954249, z: 0.021615829335636872 },
     normal: { x: 0, y: 1, z: 0 },
@@ -75,7 +86,8 @@ export const hotspots = [
   {
     header: "Burung",
     description: "Disini dingin dan sejukk",
-    detail: "Titik burung menghadirkan suasana sejuk dan elemen alam yang menjadi bagian dari pengalaman kawasan Dungkluruk. Area ini dapat diamati sambil menikmati lingkungan sekitar.",
+    detail:
+      "Titik burung menghadirkan suasana sejuk dan elemen alam yang menjadi bagian dari pengalaman kawasan Dungkluruk. Area ini dapat diamati sambil menikmati lingkungan sekitar.",
     buttonText: "9",
     position: { x: 0.06299658859323931, y: 0.8034024765883889, z: 0.2072504614438096 },
     normal: { x: 0.7082215039685178, y: 0.2298998016106447, z: 0.6675090879800493 },
@@ -83,11 +95,12 @@ export const hotspots = [
   },
 ];
 
-export const projectConfig = {
+export const projectConfig: ProjectConfig = {
   app: {
     title: "Dungkluruk AR",
     modelName: "Dungkluruk",
     version: "2.0.0",
+    defaultImageUrl: "./assets/dungkluruk.webp",
   },
   model: {
     glbUrl: "./assets/final-ar.glb",

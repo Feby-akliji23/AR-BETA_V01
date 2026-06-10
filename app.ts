@@ -1,11 +1,23 @@
 import "@google/model-viewer";
+import type { Group, Matrix4, Mesh, PerspectiveCamera, Scene, WebGLRenderer } from "three";
+import type { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import dungklurukUrl from "./assets/dungkluruk.webp";
 import arIconUrl from "./assets/ar_icon.png";
 import { THREE } from "./modules/three.js";
 import { projectConfig } from "./modules/config.js";
 import { getDom } from "./modules/dom.js";
 import { setupArGestures } from "./modules/gestures.js";
-import { projectWorldToDom } from "./modules/math.js";
+import { getXrProjectionCamera, projectWorldToDom } from "./modules/math.js";
+import type {
+  ArModel,
+  ArPlacementState,
+  CameraOrbit,
+  CameraTarget,
+  GestureControls,
+  GestureIndicator,
+  ProjectedPoint,
+  SurfaceGrid,
+} from "./modules/types.js";
 import {
   createModelInstance,
   createReticle,
@@ -35,23 +47,23 @@ const dom = getDom();
 const { hotspots } = projectConfig;
 const gestureHint = createGestureHintController(dom.gestureHint);
 
-let renderer;
-let scene;
-let camera;
-let controls;
-let modelTemplate;
-let previewModel;
-let placedModel;
-let reticle;
-let surfaceGrid;
-let gestureIndicator;
-let gestureControls;
-let hitTestSource = null;
+let renderer: WebGLRenderer;
+let scene: Scene;
+let camera: PerspectiveCamera;
+let controls: OrbitControls;
+let modelTemplate: Group;
+let previewModel: ArModel | null = null;
+let placedModel: ArModel | null = null;
+let reticle: Mesh;
+let surfaceGrid: SurfaceGrid;
+let gestureIndicator: GestureIndicator;
+let gestureControls: GestureControls;
+let hitTestSource: XRHitTestSource | null = null;
 let hitTestSourceRequested = false;
 let currentHotspotIndex = -1;
 let isInAR = false;
-let arPlacementState = "preview";
-let lastHitMatrix = null;
+let arPlacementState: ArPlacementState = "preview";
+let lastHitMatrix: Matrix4 | null = null;
 let suppressPlacementUntil = 0;
 let stableHitSince = 0;
 let unstableHitSince = 0;
@@ -59,12 +71,21 @@ let lastHitSeenAt = 0;
 let hasSmoothedHit = false;
 let scanStartedAt = 0;
 let scanAdviceIndex = -1;
-let previewHotspotElements = [];
+let previewHotspotElements: HTMLElement[] = [];
 let supportsWebXrAr = false;
 let hitTestRetryAfter = 0;
 let hitSampleCursor = 0;
 let hitSampleCount = 0;
 let previewCameraAnimationFrame = 0;
+let arFocusRotation: {
+  model: ArModel;
+  from: number;
+  delta: number;
+  startedAt: number;
+  lastApplied: number;
+} | null = null;
+let connectionBannerTimeout = 0;
+let wasOffline = !navigator.onLine;
 
 const HIT_SAMPLE_LIMIT = 18;
 const HIT_SAMPLE_MINIMUM = 10;
@@ -76,6 +97,7 @@ const HIT_LOST_GRACE = 700;
 const HIT_SMOOTHING = 0.22;
 const CARD_HIDE_MODEL_SCALE = 0.82;
 const CARD_SHOW_MODEL_SCALE = 0.9;
+const AR_FOCUS_ROTATION_DURATION = 900;
 const hitSamples = Array.from({ length: HIT_SAMPLE_LIMIT }, () => new THREE.Vector3());
 const smoothedHitPosition = new THREE.Vector3();
 const smoothedHitQuaternion = new THREE.Quaternion();
@@ -87,7 +109,9 @@ const smoothedHitMatrix = new THREE.Matrix4();
 const hitCenterScratch = new THREE.Vector3();
 const lastHitMatrixValue = new THREE.Matrix4();
 const hotspotWorldPositionScratch = new THREE.Vector3();
-const focusedProjection = {
+const modelWorldPositionScratch = new THREE.Vector3();
+const cameraWorldPositionScratch = new THREE.Vector3();
+const focusedProjection: ProjectedPoint = {
   x: 0,
   y: 0,
   z: 0,
@@ -96,6 +120,7 @@ const focusedProjection = {
   behindCamera: false,
 };
 const SETTINGS_STORAGE_KEY = "dungkluruk-ar-settings";
+const ONBOARDING_STORAGE_KEY = "dungkluruk-ar-onboarding-v1";
 const SCAN_ADVICE = [
   { after: 0, text: "Gerakkan kamera perlahan ke arah lantai." },
   { after: 4000, text: "Arahkan kamera ke lantai yang memiliki pola atau tekstur." },
@@ -151,6 +176,7 @@ async function init() {
 
     await waitForCustomElement("model-viewer");
     await setupArSupport();
+    showFirstVisitGuide();
   } catch (error) {
     dom.enterArButton.disabled = true;
     dom.sheetStartArButton.disabled = true;
@@ -188,10 +214,10 @@ function applyProjectConfig() {
   dom.modelViewer.setAttribute("shadow-intensity", preview.shadowIntensity);
 }
 
-function waitForCustomElement(name, timeout = 10000) {
+function waitForCustomElement(name: string, timeout = 10000): Promise<CustomElementConstructor> {
   return Promise.race([
     customElements.whenDefined(name),
-    new Promise((_, reject) => {
+    new Promise<never>((_, reject) => {
       window.setTimeout(() => reject(new Error(`${name} gagal dimuat`)), timeout);
     }),
   ]);
@@ -209,6 +235,8 @@ function registerServiceWorker() {
 
 function setupEvents() {
   window.addEventListener("resize", onResize);
+  window.addEventListener("online", updateConnectionStatus);
+  window.addEventListener("offline", updateConnectionStatus);
   document.addEventListener("click", closePanelsFromOutside);
   document.addEventListener("selectstart", preventTextSelection);
   document.addEventListener("dragstart", preventTextSelection);
@@ -218,28 +246,31 @@ function setupEvents() {
   dom.menuBackdrop.addEventListener("click", closeSideMenu);
   dom.menuHomeButton.addEventListener("click", openHome);
   dom.menuGuideButton.addEventListener("click", (event) => openInfoSheet(event, "guide", "Panduan Singkat"));
-  dom.menuAboutButton.addEventListener("click", (event) => openInfoSheet(event, "about", "Tentang Dungkluruk AR"));
+  dom.menuAboutButton.addEventListener("click", (event) =>
+    openInfoSheet(event, "about", "Tentang Dungkluruk AR")
+  );
   dom.menuSettingsButton.addEventListener("click", (event) => openInfoSheet(event, "settings", "Pengaturan"));
   dom.menuExitButton.addEventListener("click", exitAr);
   dom.closeInfoButton.addEventListener("click", closeInfoSheet);
   dom.enterArButton.addEventListener("click", startAr);
   dom.sheetStartArButton.addEventListener("click", startAr);
   dom.sheetPreviewButton.addEventListener("click", showPreviewHome);
-  dom.settingLabels.addEventListener("change", applySettings);
-  dom.settingGuide.addEventListener("change", applySettings);
-  dom.settingModelSize.addEventListener("change", applySettings);
+  dom.settingLabels.addEventListener("change", () => applySettings());
+  dom.settingGuide.addEventListener("change", () => applySettings());
+  dom.settingModelSize.addEventListener("change", () => applySettings());
   dom.settingResetModel.addEventListener("click", resetPlacedModel);
   dom.detailCloseButton.addEventListener("click", closeInfoSheet);
   dom.replaceModelButton.addEventListener("click", searchAnotherPlace);
   dom.prevButton.addEventListener("click", () => navigateHotspot(-1));
   dom.nextButton.addEventListener("click", () => navigateHotspot(1));
+  updateConnectionStatus();
 }
 
-function preventTextSelection(event) {
+function preventTextSelection(event: Event): void {
   event.preventDefault();
 }
 
-function toggleSideMenu(event) {
+function toggleSideMenu(event: MouseEvent): void {
   event.stopPropagation();
   dom.infoSheet.classList.add("hidden");
   const willOpen = dom.sideMenu.classList.contains("hidden");
@@ -247,12 +278,12 @@ function toggleSideMenu(event) {
   dom.menuBackdrop.classList.toggle("hidden", !willOpen);
 }
 
-function closeSideMenu() {
+function closeSideMenu(): void {
   dom.sideMenu.classList.add("hidden");
   dom.menuBackdrop.classList.add("hidden");
 }
 
-function openHome(event) {
+function openHome(event: MouseEvent): void {
   event.stopPropagation();
   if (isInAR) {
     exitAr();
@@ -261,51 +292,94 @@ function openHome(event) {
   openInfoSheet(event, "home", "Beranda");
 }
 
-function openInfoSheet(event, sheetName, title) {
-  event.stopPropagation();
+function openInfoSheet(event: Event | null, sheetName: string, title: string): void {
+  event?.stopPropagation();
   closeSideMenu();
   dom.sheetTitle.textContent = title;
-  dom.sheetContents.forEach((content) => content.classList.toggle("hidden", content.dataset.sheet !== sheetName));
+  dom.sheetContents.forEach((content) =>
+    content.classList.toggle("hidden", content.dataset.sheet !== sheetName)
+  );
   dom.infoSheet.classList.remove("hidden");
 }
 
-function openHotspotDetail(index) {
+function showFirstVisitGuide(): void {
+  try {
+    if (localStorage.getItem(ONBOARDING_STORAGE_KEY)) return;
+    localStorage.setItem(ONBOARDING_STORAGE_KEY, "seen");
+  } catch (error) {
+    console.warn("Status onboarding tidak dapat disimpan", error);
+  }
+  openInfoSheet(null, "guide", "Panduan Singkat");
+}
+
+function updateConnectionStatus(event?: Event) {
+  window.clearTimeout(connectionBannerTimeout);
+
+  if (!navigator.onLine) {
+    wasOffline = true;
+    dom.connectionBanner.textContent = "Anda sedang offline. Aset yang pernah dibuka tetap dapat digunakan.";
+    dom.connectionBanner.classList.remove("hidden", "online");
+    dom.connectionBanner.classList.add("offline");
+    return;
+  }
+
+  if (!wasOffline && event?.type !== "online") {
+    dom.connectionBanner.classList.add("hidden");
+    return;
+  }
+
+  wasOffline = false;
+  dom.connectionBanner.textContent = "Koneksi kembali tersedia.";
+  dom.connectionBanner.classList.remove("hidden", "offline");
+  dom.connectionBanner.classList.add("online");
+  connectionBannerTimeout = window.setTimeout(() => {
+    dom.connectionBanner.classList.add("hidden");
+  }, 3200);
+}
+
+function openHotspotDetail(index: number): void {
   const hotspot = hotspots[index];
+  if (!hotspot) return;
+  const detailImageUrl = hotspot.imageUrl || projectConfig.app.defaultImageUrl;
   dom.detailNumber.textContent = hotspot.buttonText;
   dom.detailTitle.textContent = hotspot.header;
   dom.detailDescription.textContent = hotspot.detail || hotspot.description;
+  dom.detailImage.style.backgroundImage = `url("${detailImageUrl}")`;
   dom.sheetTitle.textContent = "Detail Tempat";
-  dom.sheetContents.forEach((content) => content.classList.toggle("hidden", content.dataset.sheet !== "detail"));
+  dom.sheetContents.forEach((content) =>
+    content.classList.toggle("hidden", content.dataset.sheet !== "detail")
+  );
   dom.infoSheet.classList.remove("hidden");
 }
 
-function closeInfoSheet(event) {
+function closeInfoSheet(event: Event): void {
   event.stopPropagation();
   dom.infoSheet.classList.add("hidden");
 }
 
-function closePanelsFromOutside(event) {
-  const clickedMenu = dom.sideMenu.contains(event.target) || dom.menuButton.contains(event.target);
-  const clickedSheet = dom.infoSheet.contains(event.target);
+function closePanelsFromOutside(event: MouseEvent): void {
+  const target = event.target instanceof Node ? event.target : null;
+  const clickedMenu = target ? dom.sideMenu.contains(target) || dom.menuButton.contains(target) : false;
+  const clickedSheet = target ? dom.infoSheet.contains(target) : false;
 
   if (!clickedMenu) closeSideMenu();
   if (!clickedSheet) dom.infoSheet.classList.add("hidden");
 }
 
-function exitAr() {
+function exitAr(): void {
   closeSideMenu();
   if (!renderer) return;
   const session = renderer.xr.getSession();
   if (session) session.end();
 }
 
-function showPreviewHome(event) {
+function showPreviewHome(event: MouseEvent): void {
   event.stopPropagation();
   closeInfoSheet(event);
   resetPreviewScene();
 }
 
-function applySettings(shouldPersist = true) {
+function applySettings(shouldPersist = true): void {
   document.body.classList.toggle("hide-hotspot-labels", !dom.settingLabels.checked);
   document.body.classList.toggle("hide-ar-guide", !dom.settingGuide.checked);
   const scale = Number(dom.settingModelSize.value);
@@ -316,21 +390,24 @@ function applySettings(shouldPersist = true) {
   if (shouldPersist) saveSettings();
 }
 
-function loadSettings() {
+function loadSettings(): void {
   try {
-    const settings = JSON.parse(localStorage.getItem(SETTINGS_STORAGE_KEY));
+    const storedSettings = localStorage.getItem(SETTINGS_STORAGE_KEY);
+    if (!storedSettings) return;
+    const settings: unknown = JSON.parse(storedSettings);
     if (!settings || typeof settings !== "object") return;
-    if (typeof settings.showLabels === "boolean") dom.settingLabels.checked = settings.showLabels;
-    if (typeof settings.showGuide === "boolean") dom.settingGuide.checked = settings.showGuide;
-    if (["0.8", "1", "1.25"].includes(String(settings.modelSize))) {
-      dom.settingModelSize.value = String(settings.modelSize);
+    const saved = settings as Record<string, unknown>;
+    if (typeof saved.showLabels === "boolean") dom.settingLabels.checked = saved.showLabels;
+    if (typeof saved.showGuide === "boolean") dom.settingGuide.checked = saved.showGuide;
+    if (["0.8", "1", "1.25"].includes(String(saved.modelSize))) {
+      dom.settingModelSize.value = String(saved.modelSize);
     }
   } catch (error) {
     console.warn("Pengaturan tersimpan tidak dapat dibaca", error);
   }
 }
 
-function saveSettings() {
+function saveSettings(): void {
   try {
     localStorage.setItem(
       SETTINGS_STORAGE_KEY,
@@ -345,7 +422,7 @@ function saveSettings() {
   }
 }
 
-function resetPlacedModel(event) {
+function resetPlacedModel(event: MouseEvent): void {
   event.stopPropagation();
   if (!isInAR || !placedModel || !placedModel.visible) return;
   searchAnotherPlace();
@@ -374,7 +451,7 @@ async function setupArSupport() {
       : supportsQuickLook
         ? "Siap untuk AR Quick Look"
         : "Perangkat belum mendukung AR imersif";
-  } catch (error) {
+  } catch {
     dom.enterArButton.disabled = !supportsQuickLook;
     dom.sheetStartArButton.disabled = !supportsQuickLook;
     dom.statusText.textContent = supportsQuickLook
@@ -402,14 +479,16 @@ async function startAr() {
     return;
   }
 
-  let session = null;
+  const xr = navigator.xr;
+  if (!xr) return;
+  let session: XRSession | null = null;
 
   try {
     closeSideMenu();
     dom.infoSheet.classList.add("hidden");
     resetToHome(false);
 
-    session = await navigator.xr.requestSession("immersive-ar", {
+    session = await xr.requestSession("immersive-ar", {
       requiredFeatures: ["hit-test", "dom-overlay"],
       optionalFeatures: ["local-floor"],
       domOverlay: { root: document.body },
@@ -451,7 +530,7 @@ async function startAr() {
   }
 }
 
-function showAllModelViewerHotspots() {
+function showAllModelViewerHotspots(): void {
   currentHotspotIndex = -1;
   previewHotspotElements.forEach((element) => {
     element.classList.remove("hidden", "active", "card-forced-open");
@@ -461,28 +540,32 @@ function showAllModelViewerHotspots() {
   dom.buttonText.textContent = "Beranda";
 }
 
-function isIosDevice() {
-  return /iPad|iPhone|iPod/.test(navigator.userAgent) ||
-    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+function isIosDevice(): boolean {
+  return (
+    /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)
+  );
 }
 
-function placeModel() {
+function placeModel(): void {
   if (performance.now() < suppressPlacementUntil) return;
   if (arPlacementState === "placed" || !lastHitMatrix || !modelTemplate) return;
 
   preparePlacedModel();
+  const model = placedModel;
+  if (!model) return;
 
-  placedModel.visible = true;
-  placedModel.position.setFromMatrixPosition(lastHitMatrix);
-  placedModel.quaternion.setFromRotationMatrix(lastHitMatrix);
-  placedModel.scale.setScalar(Number(dom.settingModelSize.value));
-  placedModel.updateMatrixWorld(true);
+  model.visible = true;
+  model.position.setFromMatrixPosition(lastHitMatrix);
+  model.quaternion.setFromRotationMatrix(lastHitMatrix);
+  model.scale.setScalar(Number(dom.settingModelSize.value));
+  model.updateMatrixWorld(true);
 
   setArPlacementState("placed");
   dom.statusText.textContent = "Model ditempatkan";
 }
 
-function preparePlacedModel() {
+function preparePlacedModel(): void {
   if (placedModel || !modelTemplate) return;
 
   placedModel = createModelInstance(modelTemplate, hotspots, DEBUG_HOTSPOTS);
@@ -490,12 +573,13 @@ function preparePlacedModel() {
   scene.add(placedModel);
 }
 
-function searchAnotherPlace() {
+function searchAnotherPlace(): void {
   if (!isInAR) return;
 
   suppressPlacementUntil = performance.now() + 700;
   resetHitStability();
   gestureControls.clear();
+  arFocusRotation = null;
   gestureHint.hide();
   dom.focusDirection.classList.add("hidden");
 
@@ -505,7 +589,7 @@ function searchAnotherPlace() {
   setArPlacementState("scanning");
 }
 
-function onArEnded() {
+function onArEnded(): void {
   isInAR = false;
   document.body.classList.remove("ar-active");
   setArPlacementState("preview");
@@ -515,6 +599,7 @@ function onArEnded() {
   clearHitTestSource();
   resetHitStability();
   gestureControls.clear();
+  arFocusRotation = null;
   reticle.visible = false;
   dom.enterArButton.classList.remove("hidden");
   controls.enabled = true;
@@ -530,14 +615,14 @@ function onArEnded() {
   setupArSupport();
 }
 
-function clearHitTestSource() {
+function clearHitTestSource(): void {
   if (hitTestSource && typeof hitTestSource.cancel === "function") hitTestSource.cancel();
   hitTestSourceRequested = false;
   hitTestSource = null;
   hitTestRetryAfter = 0;
 }
 
-function setArPlacementState(state) {
+function setArPlacementState(state: ArPlacementState): void {
   const previousState = arPlacementState;
   arPlacementState = state;
 
@@ -563,18 +648,19 @@ function setArPlacementState(state) {
   });
 }
 
-function render(timestamp, frame) {
+function render(timestamp: number, frame?: XRFrame): void {
   if (!isInAR) return;
 
   const session = renderer.xr.getSession();
   if (session && frame && arPlacementState !== "placed") updateHitTest(frame);
   updateScanGuidance();
+  updateArFocusRotation(timestamp);
 
   renderer.render(scene, camera);
   updateHotspotPositions();
 }
 
-function updateScanGuidance() {
+function updateScanGuidance(): void {
   if (!isInAR || arPlacementState !== "scanning" || !scanStartedAt) return;
 
   const elapsed = performance.now() - scanStartedAt;
@@ -585,10 +671,10 @@ function updateScanGuidance() {
 
   if (nextIndex === scanAdviceIndex) return;
   scanAdviceIndex = nextIndex;
-  dom.arInstructions.textContent = SCAN_ADVICE[nextIndex].text;
+  dom.arInstructions.textContent = SCAN_ADVICE[nextIndex]?.text ?? SCAN_ADVICE[0]?.text ?? "";
 }
 
-function updateHitTest(frame) {
+function updateHitTest(frame: XRFrame): void {
   const session = renderer.xr.getSession();
   const referenceSpace = renderer.xr.getReferenceSpace();
 
@@ -607,6 +693,7 @@ function updateHitTest(frame) {
   if (hitTestResults.length) {
     lastHitSeenAt = performance.now();
     const hit = hitTestResults[0];
+    if (!hit) return;
     const pose = hit.getPose(referenceSpace);
     if (!pose) return;
 
@@ -622,16 +709,19 @@ function updateHitTest(frame) {
     }
 
     resetHitStability();
-    if ((!placedModel || !placedModel.visible) && arPlacementState !== "scanning") setArPlacementState("scanning");
+    if ((!placedModel || !placedModel.visible) && arPlacementState !== "scanning")
+      setArPlacementState("scanning");
   }
 }
 
-async function requestHitTestSource(session) {
+async function requestHitTestSource(session: XRSession): Promise<void> {
   hitTestSourceRequested = true;
 
   try {
     const viewerSpace = await session.requestReferenceSpace("viewer");
+    if (!session.requestHitTestSource) throw new Error("Hit-test tidak didukung sesi WebXR");
     const source = await session.requestHitTestSource({ space: viewerSpace });
+    if (!source) throw new Error("Sumber hit-test tidak tersedia");
     if (renderer.xr.getSession() !== session) {
       if (typeof source.cancel === "function") source.cancel();
       return;
@@ -647,11 +737,11 @@ async function requestHitTestSource(session) {
   }
 }
 
-function updateStableHit(hitMatrix) {
+function updateStableHit(hitMatrix: Matrix4): void {
   hitPositionScratch.setFromMatrixPosition(hitMatrix);
   hitQuaternionScratch.setFromRotationMatrix(hitMatrix);
 
-  hitSamples[hitSampleCursor].copy(hitPositionScratch);
+  hitSamples[hitSampleCursor]?.copy(hitPositionScratch);
   hitSampleCursor = (hitSampleCursor + 1) % HIT_SAMPLE_LIMIT;
   hitSampleCount = Math.min(hitSampleCount + 1, HIT_SAMPLE_LIMIT);
 
@@ -664,11 +754,7 @@ function updateStableHit(hitMatrix) {
     smoothedHitQuaternion.slerp(hitQuaternionScratch, HIT_SMOOTHING);
   }
 
-  smoothedHitMatrix.compose(
-    smoothedHitPosition,
-    smoothedHitQuaternion,
-    smoothedHitScale
-  );
+  smoothedHitMatrix.compose(smoothedHitPosition, smoothedHitQuaternion, smoothedHitScale);
   reticle.matrix.copy(smoothedHitMatrix);
   reticle.matrixWorldNeedsUpdate = true;
   surfaceGrid.matrix.copy(smoothedHitMatrix);
@@ -703,22 +789,24 @@ function updateStableHit(hitMatrix) {
   if (arPlacementState !== "ready") setArPlacementState("ready");
 }
 
-function isHitStable(positionTolerance = HIT_POSITION_TOLERANCE) {
+function isHitStable(positionTolerance = HIT_POSITION_TOLERANCE): boolean {
   if (hitSampleCount < HIT_SAMPLE_MINIMUM) return false;
 
   hitCenterScratch.set(0, 0, 0);
   for (let index = 0; index < hitSampleCount; index += 1) {
-    hitCenterScratch.add(hitSamples[index]);
+    const sample = hitSamples[index];
+    if (sample) hitCenterScratch.add(sample);
   }
   hitCenterScratch.multiplyScalar(1 / hitSampleCount);
 
   for (let index = 0; index < hitSampleCount; index += 1) {
-    if (hitSamples[index].distanceTo(hitCenterScratch) > positionTolerance) return false;
+    const sample = hitSamples[index];
+    if (!sample || sample.distanceTo(hitCenterScratch) > positionTolerance) return false;
   }
   return true;
 }
 
-function resetHitStability() {
+function resetHitStability(): void {
   hitSampleCursor = 0;
   hitSampleCount = 0;
   stableHitSince = 0;
@@ -728,7 +816,7 @@ function resetHitStability() {
   lastHitMatrix = null;
 }
 
-function updateHotspotPositions() {
+function updateHotspotPositions(): void {
   if (!isInAR) {
     hotspotElements.forEach((element) => element.classList.add("hidden"));
     dom.focusDirection.classList.add("hidden");
@@ -745,7 +833,7 @@ function updateHotspotPositions() {
   activeModel.updateMatrixWorld(true);
   const hotspotAnchor = activeModel.userData.hotspotAnchors?.[currentHotspotIndex];
   const element = hotspotElements[currentHotspotIndex];
-  if (!hotspotAnchor) return;
+  if (!hotspotAnchor || !element) return;
 
   hotspotAnchor.getWorldPosition(hotspotWorldPositionScratch);
   projectWorldToDom(renderer, camera, hotspotWorldPositionScratch, focusedProjection);
@@ -771,7 +859,7 @@ function updateHotspotPositions() {
   );
 }
 
-function navigateHotspot(direction) {
+function navigateHotspot(direction: number): void {
   if (currentHotspotIndex === -1) {
     currentHotspotIndex = direction > 0 ? 0 : hotspots.length - 1;
   } else {
@@ -784,19 +872,19 @@ function navigateHotspot(direction) {
   updateHotspotState();
 }
 
-function selectHotspot(index) {
+function selectHotspot(index: number): void {
   const selectionChanged = currentHotspotIndex !== index;
   currentHotspotIndex = index;
   updateHotspotState(selectionChanged);
 }
 
-function selectPreviewHotspot(index) {
+function selectPreviewHotspot(index: number): void {
   const selectionChanged = currentHotspotIndex !== index;
   currentHotspotIndex = index;
   updateHotspotState(selectionChanged);
 }
 
-function updateHotspotState(focusSelection = true) {
+function updateHotspotState(focusSelection = true): void {
   setHotspotState(hotspotElements, currentHotspotIndex, dom.buttonText, hotspots);
   setHotspotState(previewHotspotElements, currentHotspotIndex, dom.buttonText, hotspots);
   setNavDots(navDotElements, currentHotspotIndex);
@@ -806,14 +894,15 @@ function updateHotspotState(focusSelection = true) {
   requestAnimationFrame(updatePreviewCardWidth);
 }
 
-function updatePreviewCardWidth() {
+function updatePreviewCardWidth(): void {
   if (isInAR || currentHotspotIndex === -1) return;
 
   const hotspot = previewHotspotElements[currentHotspotIndex];
   if (!hotspot || hotspot.classList.contains("hidden")) return;
 
-  const point = hotspot.querySelector(".preview-hotspot-point");
-  const card = hotspot.querySelector(".preview-native-card");
+  const point = hotspot.querySelector<HTMLElement>(".preview-hotspot-point");
+  const card = hotspot.querySelector<HTMLElement>(".preview-native-card");
+  if (!point || !card) return;
   const availableWidth = Math.floor(point.getBoundingClientRect().left - 20);
   const width = Math.max(96, Math.min(260, availableWidth));
 
@@ -822,7 +911,7 @@ function updatePreviewCardWidth() {
   card.classList.toggle("narrow", width < 132);
 }
 
-function resetToHome(animate) {
+function resetToHome(animate: boolean): void {
   currentHotspotIndex = -1;
   setHotspotState(hotspotElements, currentHotspotIndex, dom.buttonText, hotspots);
   setHotspotState(previewHotspotElements, currentHotspotIndex, dom.buttonText, hotspots);
@@ -830,7 +919,7 @@ function resetToHome(animate) {
   if (animate) focusSelectedHotspot();
 }
 
-function resetPreviewScene() {
+function resetPreviewScene(): void {
   currentHotspotIndex = -1;
   setHotspotState(hotspotElements, currentHotspotIndex, dom.buttonText, hotspots);
   setHotspotState(previewHotspotElements, currentHotspotIndex, dom.buttonText, hotspots);
@@ -850,8 +939,11 @@ function resetPreviewScene() {
   updateHotspotPositions();
 }
 
-function focusSelectedHotspot() {
-  if (isInAR) return;
+function focusSelectedHotspot(): void {
+  if (isInAR) {
+    focusSelectedArHotspot();
+    return;
+  }
 
   if (currentHotspotIndex === -1) {
     setModelViewerCamera(projectConfig.preview.homeOrbit, projectConfig.preview.homeTarget);
@@ -859,14 +951,71 @@ function focusSelectedHotspot() {
   }
 
   const hotspot = hotspots[currentHotspotIndex];
-  const target =
-    hotspot.position.x + "m " + hotspot.position.y + "m " + hotspot.position.z + "m";
-  const orbit =
-    hotspot.orbit.theta + "deg " + hotspot.orbit.phi + "deg " + hotspot.orbit.radius + "m";
+  if (!hotspot) return;
+  const target = hotspot.position.x + "m " + hotspot.position.y + "m " + hotspot.position.z + "m";
+  const orbit = hotspot.orbit.theta + "deg " + hotspot.orbit.phi + "deg " + hotspot.orbit.radius + "m";
   setModelViewerCamera(orbit, target);
 }
 
-function setModelViewerCamera(orbit, target, animate = true) {
+function focusSelectedArHotspot(): void {
+  if (currentHotspotIndex === -1 || arPlacementState !== "placed" || !placedModel || !placedModel.visible) {
+    arFocusRotation = null;
+    return;
+  }
+
+  const hotspotAnchor = placedModel.userData.hotspotAnchors[currentHotspotIndex];
+  if (!hotspotAnchor) return;
+
+  placedModel.updateMatrixWorld(true);
+  hotspotAnchor.getWorldPosition(hotspotWorldPositionScratch);
+  placedModel.getWorldPosition(modelWorldPositionScratch);
+  const projectionCamera = getXrProjectionCamera(renderer, camera);
+  projectionCamera.getWorldPosition(cameraWorldPositionScratch);
+
+  const hotspotX = hotspotWorldPositionScratch.x - modelWorldPositionScratch.x;
+  const hotspotZ = hotspotWorldPositionScratch.z - modelWorldPositionScratch.z;
+  if (Math.hypot(hotspotX, hotspotZ) < 0.001) return;
+
+  const cameraAngle = Math.atan2(
+    cameraWorldPositionScratch.x - modelWorldPositionScratch.x,
+    cameraWorldPositionScratch.z - modelWorldPositionScratch.z
+  );
+  const hotspotAngle = Math.atan2(hotspotX, hotspotZ);
+  const delta = shortestAngle(cameraAngle - hotspotAngle);
+
+  gestureControls.clear();
+  arFocusRotation = {
+    model: placedModel,
+    from: placedModel.rotation.y,
+    delta,
+    startedAt: performance.now(),
+    lastApplied: placedModel.rotation.y,
+  };
+}
+
+function updateArFocusRotation(timestamp: number): void {
+  const animation = arFocusRotation;
+  if (!animation) return;
+
+  if (
+    !isInAR ||
+    arPlacementState !== "placed" ||
+    placedModel !== animation.model ||
+    Math.abs(shortestAngle(animation.model.rotation.y - animation.lastApplied)) > 0.001
+  ) {
+    arFocusRotation = null;
+    return;
+  }
+
+  const progress = Math.min((timestamp - animation.startedAt) / AR_FOCUS_ROTATION_DURATION, 1);
+  animation.lastApplied = animation.from + animation.delta * smootherStep(progress);
+  animation.model.rotation.y = animation.lastApplied;
+  animation.model.updateMatrixWorld(true);
+
+  if (progress >= 1) arFocusRotation = null;
+}
+
+function setModelViewerCamera(orbit: string, target: string, animate = true): void {
   if (!dom.modelViewer) return;
   if (!animate || typeof dom.modelViewer.getCameraOrbit !== "function") {
     cancelPreviewCameraAnimation();
@@ -878,18 +1027,23 @@ function setModelViewerCamera(orbit, target, animate = true) {
   animateModelViewerCamera(orbit, target);
 }
 
-function animateModelViewerCamera(orbit, target) {
+function animateModelViewerCamera(orbit: string, target: string): void {
   cancelPreviewCameraAnimation();
 
-  const fromOrbit = dom.modelViewer.getCameraOrbit();
-  const fromTarget = dom.modelViewer.getCameraTarget();
+  const getCameraOrbit = dom.modelViewer.getCameraOrbit;
+  const getCameraTarget = dom.modelViewer.getCameraTarget;
+  const jumpMethod = dom.modelViewer.jumpCameraToGoal;
+  if (!getCameraOrbit || !getCameraTarget || !jumpMethod) return;
+  const jumpCameraToGoal = (): void => jumpMethod.call(dom.modelViewer);
+  const fromOrbit = getCameraOrbit.call(dom.modelViewer);
+  const fromTarget = getCameraTarget.call(dom.modelViewer);
   const toOrbit = parseOrbit(orbit);
   const toTarget = parseTarget(target);
   const thetaDelta = shortestAngle(toOrbit.theta - fromOrbit.theta);
   const startedAt = performance.now();
   const duration = projectConfig.preview.cameraTransitionMs;
 
-  function update(time) {
+  function update(time: number): void {
     const progress = Math.min((time - startedAt) / duration, 1);
     const eased = smootherStep(progress);
     const theta = fromOrbit.theta + thetaDelta * eased;
@@ -901,7 +1055,7 @@ function animateModelViewerCamera(orbit, target) {
 
     dom.modelViewer.cameraOrbit = `${theta}rad ${phi}rad ${radius}m`;
     dom.modelViewer.cameraTarget = `${x}m ${y}m ${z}m`;
-    dom.modelViewer.jumpCameraToGoal();
+    jumpCameraToGoal();
 
     if (progress < 1) {
       previewCameraAnimationFrame = requestAnimationFrame(update);
@@ -913,14 +1067,15 @@ function animateModelViewerCamera(orbit, target) {
   previewCameraAnimationFrame = requestAnimationFrame(update);
 }
 
-function cancelPreviewCameraAnimation() {
+function cancelPreviewCameraAnimation(): void {
   if (!previewCameraAnimationFrame) return;
   cancelAnimationFrame(previewCameraAnimationFrame);
   previewCameraAnimationFrame = 0;
 }
 
-function parseOrbit(value) {
+function parseOrbit(value: string): CameraOrbit {
   const [theta, phi, radius] = value.split(/\s+/);
+  if (!theta || !phi || !radius) throw new Error(`Orbit kamera tidak valid: ${value}`);
   return {
     theta: THREE.MathUtils.degToRad(Number.parseFloat(theta)),
     phi: THREE.MathUtils.degToRad(Number.parseFloat(phi)),
@@ -928,21 +1083,34 @@ function parseOrbit(value) {
   };
 }
 
-function parseTarget(value) {
+function parseTarget(value: string): CameraTarget {
   const [x, y, z] = value.split(/\s+/).map(Number.parseFloat);
+  if (x === undefined || y === undefined || z === undefined) {
+    throw new Error(`Target kamera tidak valid: ${value}`);
+  }
   return { x, y, z };
 }
 
-function shortestAngle(angle) {
+function shortestAngle(angle: number): number {
   return Math.atan2(Math.sin(angle), Math.cos(angle));
 }
 
-function smootherStep(value) {
+function smootherStep(value: number): number {
   return value * value * value * (value * (value * 6 - 15) + 10);
 }
 
-function setupOverlayGuards() {
-  [dom.topbar, dom.menuBackdrop, dom.sideMenu, dom.infoSheet, dom.arStatus, dom.arInstructions, dom.arMenu, dom.hotspotLayer, dom.navContainer]
+function setupOverlayGuards(): void {
+  [
+    dom.topbar,
+    dom.menuBackdrop,
+    dom.sideMenu,
+    dom.infoSheet,
+    dom.arStatus,
+    dom.arInstructions,
+    dom.arMenu,
+    dom.hotspotLayer,
+    dom.navContainer,
+  ]
     .filter(Boolean)
     .forEach((element) => {
       element.addEventListener("beforexrselect", (event) => {
@@ -951,7 +1119,7 @@ function setupOverlayGuards() {
     });
 }
 
-function onResize() {
+function onResize(): void {
   if (!camera || !renderer) return;
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();

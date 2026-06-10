@@ -1,0 +1,20 @@
+{
+  "name": "Dungkluruk AR",
+  "short_name": "Dungkluruk AR",
+  "description": "Jelajahi kawasan wisata Dungkluruk melalui model 3D interaktif dan Augmented Reality.",
+  "lang": "id",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#fffaf0",
+  "theme_color": "#fffaf0",
+  "icons": [
+    {
+      "src": "./assets/app-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

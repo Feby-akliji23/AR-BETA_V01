@@ -1,9 +1,10 @@
 import { THREE } from "./three.js";
 import { clamp, getTouchDistance, getXrProjectionCamera } from "./math.js";
+import type { Vector3 } from "three";
+import type { ArGestureOptions, ArModel, GestureState, GestureType } from "./types.js";
 
 const HOLD_DURATION = 500;
 const MOVE_THRESHOLD = 18;
-const ROTATE_DIRECTION_RATIO = 1.5;
 const ROTATE_SENSITIVITY = 0.009;
 const DRAG_SENSITIVITY = 0.42;
 const DRAG_LERP = 0.38;
@@ -12,8 +13,11 @@ const MAX_DRAG_STEP = 0.035;
 const MIN_SCALE = 0.65;
 const MAX_SCALE = 1.8;
 
-export function setupArGestures(options) {
-  const state = {
+export function setupArGestures(options: ArGestureOptions) {
+  const state: {
+    gesture: GestureState | null;
+    holdTimer: number | null;
+  } = {
     gesture: null,
     holdTimer: null,
   };
@@ -23,70 +27,69 @@ export function setupArGestures(options) {
   const planePoint = new THREE.Vector3();
   const dragDelta = new THREE.Vector3();
 
-  function isUiTarget(event) {
+  function isUiTarget(event: Event): boolean {
     const selector =
       "button, a, input, select, textarea, #topbar, #ar-menu, #side-menu, #menu-backdrop, " +
       "#hotspot-layer, .button-container, #info-sheet, #detail-sheet";
     return event.composedPath().some((target) => target instanceof Element && target.matches(selector));
   }
 
-  function canManipulate(event) {
+  function canManipulate(event: Event): boolean {
     const placedModel = options.getPlacedModel();
     if (!options.isEnabled() || !placedModel || !placedModel.visible) return false;
     return !isUiTarget(event);
   }
 
-  function setGestureUi(mode) {
+  function setGestureUi(mode: GestureType | null): void {
     document.body.classList.toggle("ar-gesture-pending", mode === "pending-model");
     document.body.classList.toggle("ar-gesture-active", Boolean(mode && mode !== "pending-model"));
   }
 
-  function clearHoldTimer() {
+  function clearHoldTimer(): void {
     if (!state.holdTimer) return;
     clearTimeout(state.holdTimer);
     state.holdTimer = null;
   }
 
-  function setPointerFromTouch(touch) {
+  function setPointerFromTouch(touch: Touch): void {
     pointer.x = (touch.clientX / window.innerWidth) * 2 - 1;
     pointer.y = -(touch.clientY / window.innerHeight) * 2 + 1;
   }
 
-  function setRayFromTouch(touch) {
+  function setRayFromTouch(touch: Touch): void {
     setPointerFromTouch(touch);
     raycaster.setFromCamera(pointer, getXrProjectionCamera(options.renderer, options.camera));
   }
 
-  function touchesModel(touch, placedModel) {
+  function touchesModel(touch: Touch, placedModel: ArModel): boolean {
     setRayFromTouch(touch);
     return raycaster.intersectObject(placedModel, true).length > 0;
   }
 
-  function getFloorIntersection(touch, floorY, target) {
+  function getFloorIntersection(touch: Touch, floorY: number, target: Vector3): Vector3 | null {
     setRayFromTouch(touch);
     floorPlane.constant = -floorY;
     return raycaster.ray.intersectPlane(floorPlane, target);
   }
 
-  function beginDrag(touch, placedModel, source) {
+  function beginDrag(touch: Touch, placedModel: ArModel): boolean {
     clearHoldTimer();
     const startIntersection = new THREE.Vector3();
     if (!getFloorIntersection(touch, placedModel.position.y, startIntersection)) return false;
 
     state.gesture = {
       type: "drag",
-      source,
       floorY: placedModel.position.y,
       lastIntersection: startIntersection,
       targetPosition: placedModel.position.clone(),
     };
     setGestureUi("drag");
     options.indicator.show("drag", placedModel);
-    options.showHint(source === "hold" ? "Model siap dipindahkan" : "Geser untuk memindahkan");
+    options.showHint("Model siap dipindahkan");
     return true;
   }
 
-  function beginPendingModelGesture(touch, placedModel) {
+  function beginPendingModelGesture(touch: Touch, placedModel: ArModel): void {
     state.gesture = {
       type: "pending-model",
       startX: touch.clientX,
@@ -98,11 +101,11 @@ export function setupArGestures(options) {
 
     state.holdTimer = setTimeout(() => {
       if (!state.gesture || state.gesture.type !== "pending-model") return;
-      beginDrag(touch, placedModel, "hold");
+      beginDrag(touch, placedModel);
     }, HOLD_DURATION);
   }
 
-  function beginPinch(touches, placedModel) {
+  function beginPinch(touches: TouchList, placedModel: ArModel): void {
     clearHoldTimer();
     state.gesture = {
       type: "pinch",
@@ -114,9 +117,9 @@ export function setupArGestures(options) {
     options.showHint("Pinch untuk mengubah ukuran");
   }
 
-  function onTouchStart(event) {
+  function onTouchStart(event: TouchEvent): void {
     const placedModel = options.getPlacedModel();
-    if (!canManipulate(event)) {
+    if (!placedModel || !canManipulate(event)) {
       if (isUiTarget(event)) clearGesture(true);
       return;
     }
@@ -128,24 +131,27 @@ export function setupArGestures(options) {
     }
 
     if (event.touches.length !== 1) return;
-    const touch = event.touches[0];
+    const touch = event.touches.item(0);
+    if (!touch) return;
 
     if (touchesModel(touch, placedModel)) {
       beginPendingModelGesture(touch, placedModel);
     } else {
-      beginDrag(touch, placedModel, "floor");
+      clearGesture(true);
     }
   }
 
-  function updatePendingModelGesture(touch, placedModel) {
-    const deltaX = touch.clientX - state.gesture.startX;
-    const deltaY = touch.clientY - state.gesture.startY;
+  function updatePendingModelGesture(touch: Touch, placedModel: ArModel): void {
+    const gesture = state.gesture;
+    if (!gesture || (gesture.type !== "pending-model" && gesture.type !== "rotate")) return;
+    const deltaX = touch.clientX - gesture.startX;
+    const deltaY = touch.clientY - gesture.startY;
     const distance = Math.hypot(deltaX, deltaY);
     if (distance < MOVE_THRESHOLD) return;
 
     clearHoldTimer();
-    if (Math.abs(deltaX) >= Math.abs(deltaY) * ROTATE_DIRECTION_RATIO) {
-      state.gesture.type = "rotate";
+    if (Math.abs(deltaX) >= MOVE_THRESHOLD * 0.5) {
+      gesture.type = "rotate";
       setGestureUi("rotate");
       options.indicator.show("rotate", placedModel);
       options.showHint("Geser horizontal untuk memutar");
@@ -153,51 +159,55 @@ export function setupArGestures(options) {
       return;
     }
 
-    beginDrag(touch, placedModel, "model");
+    clearGesture(false);
+    options.showHint("Tahan model terlebih dahulu untuk memindahkan");
+    options.hideHintSoon();
   }
 
-  function updateRotation(touch, placedModel) {
-    const deltaX = touch.clientX - state.gesture.startX;
-    placedModel.rotation.y = state.gesture.startRotation + deltaX * ROTATE_SENSITIVITY;
+  function updateRotation(touch: Touch, placedModel: ArModel): void {
+    const gesture = state.gesture;
+    if (!gesture || (gesture.type !== "pending-model" && gesture.type !== "rotate")) return;
+    const deltaX = touch.clientX - gesture.startX;
+    placedModel.rotation.y = gesture.startRotation + deltaX * ROTATE_SENSITIVITY;
     placedModel.updateMatrixWorld(true);
     options.indicator.update(placedModel);
     options.showHint("Rotasi " + Math.round(THREE.MathUtils.radToDeg(deltaX * ROTATE_SENSITIVITY)) + "°");
   }
 
-  function updateDrag(touch, placedModel) {
-    if (!getFloorIntersection(touch, state.gesture.floorY, planePoint)) return;
-    dragDelta.copy(planePoint).sub(state.gesture.lastIntersection).multiplyScalar(DRAG_SENSITIVITY);
+  function updateDrag(touch: Touch, placedModel: ArModel): void {
+    const gesture = state.gesture;
+    if (!gesture || gesture.type !== "drag") return;
+    if (!getFloorIntersection(touch, gesture.floorY, planePoint)) return;
+    dragDelta.copy(planePoint).sub(gesture.lastIntersection).multiplyScalar(DRAG_SENSITIVITY);
     const maxStep = THREE.MathUtils.clamp(
       raycaster.ray.origin.distanceTo(placedModel.position) * 0.018,
       MIN_DRAG_STEP,
       MAX_DRAG_STEP
     );
     if (dragDelta.length() > maxStep) dragDelta.setLength(maxStep);
-    state.gesture.targetPosition.add(dragDelta);
-    placedModel.position.lerp(state.gesture.targetPosition, DRAG_LERP);
-    placedModel.position.y = state.gesture.floorY;
-    state.gesture.lastIntersection.copy(planePoint);
+    gesture.targetPosition.add(dragDelta);
+    placedModel.position.lerp(gesture.targetPosition, DRAG_LERP);
+    placedModel.position.y = gesture.floorY;
+    gesture.lastIntersection.copy(planePoint);
     placedModel.updateMatrixWorld(true);
     options.indicator.update(placedModel);
     options.showHint("Geser untuk memindahkan");
   }
 
-  function updatePinch(touches, placedModel) {
+  function updatePinch(touches: TouchList, placedModel: ArModel): void {
+    const gesture = state.gesture;
+    if (!gesture || gesture.type !== "pinch") return;
     const distance = getTouchDistance(touches);
-    const scale = clamp(
-      state.gesture.startScale * (distance / state.gesture.startDistance),
-      MIN_SCALE,
-      MAX_SCALE
-    );
+    const scale = clamp(gesture.startScale * (distance / gesture.startDistance), MIN_SCALE, MAX_SCALE);
     placedModel.scale.setScalar(scale);
     placedModel.updateMatrixWorld(true);
     options.indicator.update(placedModel);
     options.showHint("Ukuran " + Math.round(scale * 100) + "%");
   }
 
-  function onTouchMove(event) {
+  function onTouchMove(event: TouchEvent): void {
     const placedModel = options.getPlacedModel();
-    if (!canManipulate(event) || !state.gesture) return;
+    if (!placedModel || !canManipulate(event) || !state.gesture) return;
     event.preventDefault();
 
     if (event.touches.length === 2) {
@@ -207,23 +217,23 @@ export function setupArGestures(options) {
     }
 
     if (event.touches.length !== 1) return;
-    const touch = event.touches[0];
+    const touch = event.touches.item(0);
+    if (!touch) return;
 
     if (state.gesture.type === "pending-model") updatePendingModelGesture(touch, placedModel);
     else if (state.gesture.type === "rotate") updateRotation(touch, placedModel);
     else if (state.gesture.type === "drag") updateDrag(touch, placedModel);
   }
 
-  function restartSingleTouch(touch) {
+  function restartSingleTouch(touch: Touch): void {
     const placedModel = options.getPlacedModel();
     clearGesture(false);
     if (!placedModel || !placedModel.visible) return;
 
     if (touchesModel(touch, placedModel)) beginPendingModelGesture(touch, placedModel);
-    else beginDrag(touch, placedModel, "floor");
   }
 
-  function onTouchEnd(event) {
+  function onTouchEnd(event: TouchEvent): void {
     if (isUiTarget(event)) {
       clearGesture(true);
       return;
@@ -232,14 +242,15 @@ export function setupArGestures(options) {
     event.preventDefault();
 
     if (event.touches.length === 1) {
-      restartSingleTouch(event.touches[0]);
+      const touch = event.touches.item(0);
+      if (touch) restartSingleTouch(touch);
       return;
     }
 
     if (event.touches.length === 0) clearGesture(true);
   }
 
-  function clearGesture(hideHint) {
+  function clearGesture(hideHint: boolean): void {
     clearHoldTimer();
     state.gesture = null;
     setGestureUi(null);

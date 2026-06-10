@@ -1,6 +1,20 @@
 import { clamp } from "./math.js";
+import type {
+  ArPlacementDependencies,
+  ArPlacementState,
+  HotspotConfig,
+  ModelViewerElement,
+  ProjectedPoint,
+} from "./types.js";
 
-export function createHotspotElements(hotspots, hotspotLayer, onSelect, onDetail) {
+type HotspotCallback = (index: number) => void;
+
+export function createHotspotElements(
+  hotspots: HotspotConfig[],
+  hotspotLayer: HTMLElement,
+  onSelect: HotspotCallback,
+  onDetail: HotspotCallback
+): HTMLElement[] {
   return hotspots.map((hotspot, index) => {
     const item = document.createElement("div");
     item.className = "hotspot hidden";
@@ -18,6 +32,7 @@ export function createHotspotElements(hotspots, hotspotLayer, onSelect, onDetail
 
     const thumb = document.createElement("span");
     thumb.className = "hotspot-thumb";
+    applyHotspotImage(thumb, hotspot);
 
     const copy = document.createElement("span");
     copy.className = "hotspot-copy";
@@ -64,15 +79,18 @@ export function createHotspotElements(hotspots, hotspotLayer, onSelect, onDetail
   });
 }
 
-export function createModelViewerHotspotElements(hotspots, modelViewer, onSelect, onDetail) {
+export function createModelViewerHotspotElements(
+  hotspots: HotspotConfig[],
+  modelViewer: ModelViewerElement,
+  onSelect: HotspotCallback,
+  onDetail: HotspotCallback
+): HTMLElement[] {
   return hotspots.map((hotspot, index) => {
     const item = document.createElement("div");
     item.className = "preview-hotspot hidden";
     item.slot = "hotspot-" + index;
-    item.dataset.position =
-      hotspot.position.x + "m " + hotspot.position.y + "m " + hotspot.position.z + "m";
-    item.dataset.normal =
-      hotspot.normal.x + "m " + hotspot.normal.y + "m " + hotspot.normal.z + "m";
+    item.dataset.position = hotspot.position.x + "m " + hotspot.position.y + "m " + hotspot.position.z + "m";
+    item.dataset.normal = hotspot.normal.x + "m " + hotspot.normal.y + "m " + hotspot.normal.z + "m";
 
     const point = document.createElement("button");
     point.className = "preview-hotspot-point";
@@ -87,6 +105,7 @@ export function createModelViewerHotspotElements(hotspots, modelViewer, onSelect
 
     const thumb = document.createElement("span");
     thumb.className = "hotspot-thumb";
+    applyHotspotImage(thumb, hotspot);
 
     const copy = document.createElement("span");
     copy.className = "hotspot-copy";
@@ -134,9 +153,12 @@ export function createModelViewerHotspotElements(hotspots, modelViewer, onSelect
   });
 }
 
-export function createNavDots(count, navDots) {
-  if (!navDots) return [];
+function applyHotspotImage(element: HTMLElement, hotspot: HotspotConfig): void {
+  if (!hotspot.imageUrl) return;
+  element.style.backgroundImage = `url("${hotspot.imageUrl}")`;
+}
 
+export function createNavDots(count: number, navDots: HTMLElement): HTMLElement[] {
   navDots.innerHTML = "";
   return Array.from({ length: count }, (_, index) => {
     const dot = document.createElement("span");
@@ -146,13 +168,18 @@ export function createNavDots(count, navDots) {
   });
 }
 
-export function setNavDots(dots, activeIndex) {
+export function setNavDots(dots: HTMLElement[], activeIndex: number): void {
   dots.forEach((dot, index) => {
     dot.classList.toggle("active", index === activeIndex);
   });
 }
 
-export function setHotspotState(elements, activeIndex, buttonText, hotspots) {
+export function setHotspotState(
+  elements: HTMLElement[],
+  activeIndex: number,
+  buttonText: HTMLElement,
+  hotspots: HotspotConfig[]
+): void {
   elements.forEach((element, index) => {
     const wasActive = element.classList.contains("active");
     element.classList.toggle("hidden", index !== activeIndex);
@@ -160,10 +187,10 @@ export function setHotspotState(elements, activeIndex, buttonText, hotspots) {
     if (index !== activeIndex) element.classList.remove("card-forced-open");
     if (index === activeIndex && !wasActive) element.classList.remove("card-collapsed");
   });
-  buttonText.textContent = activeIndex === -1 ? "Beranda" : hotspots[activeIndex].buttonText;
+  buttonText.textContent = activeIndex === -1 ? "Beranda" : (hotspots[activeIndex]?.buttonText ?? "Beranda");
 }
 
-export function setArPlacementState(state, deps) {
+export function setArPlacementState(state: ArPlacementState, deps: ArPlacementDependencies): void {
   const {
     reticle,
     surfaceGrid,
@@ -283,23 +310,21 @@ export function setArPlacementState(state, deps) {
   }
 }
 
-export function createGestureHintController(gestureHint) {
-  let timer = null;
+export function createGestureHintController(gestureHint: HTMLElement) {
+  let timer = 0;
 
-  function show(message) {
-    if (!gestureHint) return;
+  function show(message: string): void {
     window.clearTimeout(timer);
     gestureHint.textContent = message;
     gestureHint.classList.remove("hidden");
   }
 
-  function hideSoon() {
+  function hideSoon(): void {
     window.clearTimeout(timer);
     timer = window.setTimeout(hide, 800);
   }
 
-  function hide() {
-    if (!gestureHint) return;
+  function hide(): void {
     window.clearTimeout(timer);
     gestureHint.classList.add("hidden");
     gestureHint.textContent = "";
@@ -308,7 +333,11 @@ export function createGestureHintController(gestureHint) {
   return { show, hideSoon, hide };
 }
 
-export function updateFocusDirection(focusDirection, projected, isActive) {
+export function updateFocusDirection(
+  focusDirection: HTMLElement,
+  projected: ProjectedPoint | null,
+  isActive: boolean
+): void {
   if (!isActive || !projected) {
     focusDirection.classList.add("hidden");
     return;

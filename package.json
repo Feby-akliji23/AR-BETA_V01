@@ -9,13 +9,25 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "dependencies": {
     "@google/model-viewer": "3.5.0",
     "three": "0.163.0"
   },
   "devDependencies": {
+    "@eslint/js": "^9.0.0",
+    "@types/three": "^0.163.0",
+    "typescript-eslint": "^8.0.0",
+    "eslint": "^9.0.0",
+    "globals": "^16.0.0",
+    "prettier": "^3.0.0",
+    "typescript": "^5.7.0",
+    "@types/webxr": "^0.5.22",
     "vite": "^6.1.0"
   }
 }

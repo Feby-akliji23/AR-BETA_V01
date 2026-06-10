@@ -1,9 +1,35 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="id">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>AR Tajuk Smart Tourism</title>
+    <meta
+      name="description"
+      content="Jelajahi kawasan wisata Dungkluruk melalui model 3D interaktif dan Augmented Reality."
+    />
+    <meta name="theme-color" content="#fffaf0" />
+    <meta name="application-name" content="Dungkluruk AR" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Dungkluruk AR" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Dungkluruk AR" />
+    <meta
+      property="og:description"
+      content="Jelajahi kawasan wisata Dungkluruk melalui model 3D interaktif dan Augmented Reality."
+    />
+    <meta property="og:image" content="./assets/DUNG%20KLURUK%20FINAL.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Dungkluruk AR" />
+    <meta
+      name="twitter:description"
+      content="Jelajahi kawasan wisata Dungkluruk melalui model 3D interaktif dan Augmented Reality."
+    />
+    <meta name="twitter:image" content="./assets/DUNG%20KLURUK%20FINAL.png" />
+    <title>Dungkluruk AR</title>
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="icon" href="./assets/app-icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="./assets/ar_icon.png" />
     <link rel="stylesheet" type="text/css" href="style.css" />
   </head>
   <body>
@@ -17,7 +43,13 @@
       ar-modes="webxr quick-look"
       quick-look-browsers="safari"
     >
-      <button class="model-viewer-ar-trigger" slot="ar-button" type="button" tabindex="-1" aria-hidden="true"></button>
+      <button
+        class="model-viewer-ar-trigger"
+        slot="ar-button"
+        type="button"
+        tabindex="-1"
+        aria-hidden="true"
+      ></button>
     </model-viewer>
 
     <canvas id="scene"></canvas>
@@ -34,6 +66,8 @@
       </button>
     </div>
 
+    <div id="connection-banner" class="hidden" role="status" aria-live="polite"></div>
+
     <button id="menu-backdrop" class="hidden" type="button" aria-label="Tutup menu"></button>
 
     <div id="side-menu" class="hidden">
@@ -46,24 +80,41 @@
       </div>
       <nav class="menu-navigation">
         <button id="menu-home" class="active" type="button">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5v8a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M3 11.5 12 4l9 7.5v8a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z" />
+          </svg>
           <span>Beranda</span>
         </button>
         <button id="menu-guide" type="button">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8.5 4h7A3.5 3.5 0 0 1 19 7.5v7a3.5 3.5 0 0 1-3.5 3.5H13l-3.5 3v-3h-1A3.5 3.5 0 0 1 5 14.5v-7A3.5 3.5 0 0 1 8.5 4z"/><path d="M9.5 9a2.5 2.5 0 1 1 4 2c-1 .7-1.5 1.1-1.5 2M12 15.8v.2"/></svg>
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path
+              d="M8.5 4h7A3.5 3.5 0 0 1 19 7.5v7a3.5 3.5 0 0 1-3.5 3.5H13l-3.5 3v-3h-1A3.5 3.5 0 0 1 5 14.5v-7A3.5 3.5 0 0 1 8.5 4z"
+            />
+            <path d="M9.5 9a2.5 2.5 0 1 1 4 2c-1 .7-1.5 1.1-1.5 2M12 15.8v.2" />
+          </svg>
           <span>Panduan</span>
         </button>
         <button id="menu-about" type="button">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 10v6M12 7.5v.2"/></svg>
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="12" cy="12" r="9" />
+            <path d="M12 10v6M12 7.5v.2" />
+          </svg>
           <span>Tentang</span>
         </button>
         <button id="menu-settings" type="button">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1l2-1.5-2-3.4-2.4 1a8 8 0 0 0-1.8-1L14.4 3h-4l-.4 3.1a8 8 0 0 0-1.8 1l-2.4-1-2 3.4 2 1.5a7 7 0 0 0 0 2l-2 1.5 2 3.4 2.4-1a8 8 0 0 0 1.8 1l.4 3.1h4l.4-3.1a8 8 0 0 0 1.8-1l2.4 1 2-3.4-2-1.5a7 7 0 0 0 .1-1z"/></svg>
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="12" cy="12" r="3" />
+            <path
+              d="M19 12a7 7 0 0 0-.1-1l2-1.5-2-3.4-2.4 1a8 8 0 0 0-1.8-1L14.4 3h-4l-.4 3.1a8 8 0 0 0-1.8 1l-2.4-1-2 3.4 2 1.5a7 7 0 0 0 0 2l-2 1.5 2 3.4 2.4-1a8 8 0 0 0 1.8 1l.4 3.1h4l.4-3.1a8 8 0 0 0 1.8-1l2.4 1 2-3.4-2-1.5a7 7 0 0 0 .1-1z"
+            />
+          </svg>
           <span>Pengaturan</span>
         </button>
       </nav>
       <button id="menu-exit" type="button" class="danger">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 5H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h5M14 8l4 4-4 4M18 12H8"/></svg>
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M10 5H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h5M14 8l4 4-4 4M18 12H8" />
+        </svg>
         <span>Keluar</span>
       </button>
     </div>
@@ -94,65 +145,208 @@
         </div>
       </section>
 
-      <section class="sheet-content guide-list" data-sheet="guide">
-        <div>
-          <svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="21"/><path d="m28 23-9 9 9 9M19 32h26M36 23l9 9-9 9"/></svg>
-          <span><strong>Pilih titik lokasi</strong><small>Gunakan tombol Berikutnya / Sebelumnya untuk berpindah tempat.</small></span>
+      <section class="sheet-content guide-layout" data-sheet="guide">
+        <header class="guide-intro">
+          <span class="guide-kicker">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M4 5.5 9 4l6 2 5-1.5v14L15 20l-6-2-5 1.5zM9 4v14M15 6v14" />
+            </svg>
+            Panduan Singkat
+          </span>
+          <h3>Cara menggunakan Dungkluruk AR</h3>
+          <p>Ikuti langkah berikut untuk menjelajahi kawasan Dungkluruk secara interaktif.</p>
+        </header>
+
+        <div class="guide-steps">
+          <article class="guide-step">
+            <span class="guide-step-icon"
+              ><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m8 6-6 6 6 6M2 12h20M16 6l6 6-6 6" /></svg
+            ></span>
+            <span class="guide-step-number">1</span>
+            <div>
+              <strong>Pilih titik lokasi</strong
+              ><small>Gunakan tombol Berikutnya / Sebelumnya untuk berpindah tempat.</small>
+            </div>
+          </article>
+          <article class="guide-step">
+            <span class="guide-step-icon"
+              ><svg viewBox="0 0 24 24" aria-hidden="true">
+                <rect x="4" y="3" width="16" height="14" rx="2" />
+                <path d="M8 7h8M8 11h5M9 21h6M12 17v4" /></svg
+            ></span>
+            <span class="guide-step-number">2</span>
+            <div>
+              <strong>Masuk ke mode AR</strong
+              ><small>Tekan “Lihat di ruang Anda”, lalu arahkan kamera ke lantai.</small>
+            </div>
+          </article>
+          <article class="guide-step">
+            <span class="guide-step-icon"
+              ><svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M4 17h16M7 15l5-3 5 3-5 3zM12 12V3M9 6l3-3 3 3" /></svg
+            ></span>
+            <span class="guide-step-number">3</span>
+            <div>
+              <strong>Letakkan model</strong
+              ><small>Tap pada permukaan yang sudah terdeteksi dan stabil.</small>
+            </div>
+          </article>
+          <article class="guide-step">
+            <span class="guide-step-icon"
+              ><svg viewBox="0 0 24 24" aria-hidden="true">
+                <circle cx="12" cy="12" r="4" />
+                <path d="M12 2v5M12 17v5M2 12h5M17 12h5M5 5l3 3M16 16l3 3M19 5l-3 3M8 16l-3 3" /></svg
+            ></span>
+            <span class="guide-step-number">4</span>
+            <div>
+              <strong>Atur posisi model</strong
+              ><small
+                >Geser horizontal untuk rotasi, tahan model lalu geser untuk memindahkan, dan pinch untuk
+                mengubah ukuran.</small
+              >
+            </div>
+          </article>
+          <article class="guide-step">
+            <span class="guide-step-icon"
+              ><svg viewBox="0 0 24 24" aria-hidden="true">
+                <rect x="4" y="3" width="16" height="18" rx="2" />
+                <path d="M8 8h8M8 12h8M8 16h5" /></svg
+            ></span>
+            <span class="guide-step-number">5</span>
+            <div>
+              <strong>Lihat detail tempat</strong
+              ><small>Tap card lokasi untuk membaca informasi lengkap.</small>
+            </div>
+          </article>
         </div>
-        <div>
-          <svg viewBox="0 0 64 64" aria-hidden="true"><rect x="12" y="14" width="40" height="34" rx="5"/><path d="M23 54h18M32 48v6M21 25h22M21 32h15"/><circle cx="45" cy="39" r="3"/></svg>
-          <span><strong>Masuk ke mode AR</strong><small>Tekan “Lihat di ruang Anda”, lalu arahkan kamera ke lantai.</small></span>
-        </div>
-        <div>
-          <svg viewBox="0 0 64 64" aria-hidden="true"><path d="M10 47h44M17 42l15-8 15 8-15 8zM32 34V15"/><path d="m24 23 8-8 8 8"/><circle cx="32" cy="34" r="4"/></svg>
-          <span><strong>Letakkan model</strong><small>Tap pada permukaan yang sudah terdeteksi dan stabil.</small></span>
-        </div>
-        <div>
-          <svg viewBox="0 0 64 64" aria-hidden="true"><path d="M21 43 11 33l10-10M43 23l10 10-10 10M11 33h42M32 12v40M22 22l10-10 10 10M22 42l10 10 10-10"/><circle cx="32" cy="33" r="7"/></svg>
-          <span><strong>Atur posisi model</strong><small>Geser horizontal untuk rotasi, tahan model lalu geser untuk memindahkan, dan pinch untuk mengubah ukuran.</small></span>
-        </div>
-        <div>
-          <svg viewBox="0 0 64 64" aria-hidden="true"><path d="M14 13h36a5 5 0 0 1 5 5v25a5 5 0 0 1-5 5H31l-12 8v-8h-5a5 5 0 0 1-5-5V18a5 5 0 0 1 5-5z"/><circle cx="25" cy="29" r="6"/><path d="M35 25h12M35 31h12M20 40h27"/></svg>
-          <span><strong>Lihat detail tempat</strong><small>Tap card lokasi untuk membaca informasi lengkap.</small></span>
-        </div>
+
+        <aside class="guide-tips">
+          <h3>
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path
+                d="M9 18h6M10 22h4M8 14c-1.2-1-2-2.6-2-4.4A6 6 0 0 1 18 9.6c0 1.8-.8 3.4-2 4.4-.8.7-1 1.2-1 2H9c0-.8-.2-1.3-1-2Z"
+              /></svg
+            >Tips terbaik
+          </h3>
+          <ul>
+            <li>
+              <span>1</span>
+              <div><strong>Gunakan pencahayaan</strong><small>yang cukup.</small></div>
+            </li>
+            <li>
+              <span>2</span>
+              <div><strong>Pastikan permukaan datar</strong><small>untuk hasil stabil.</small></div>
+            </li>
+            <li>
+              <span>3</span>
+              <div><strong>Jaga jarak aman</strong><small>dari benda sekitar.</small></div>
+            </li>
+          </ul>
+        </aside>
       </section>
 
-      <section class="sheet-content hidden" data-sheet="about">
-        <div class="about-copy">
-          <p>Dungkluruk AR adalah aplikasi WebXR yang menampilkan kawasan wisata Dungkluruk dalam bentuk model 3D interaktif dan Augmented Reality.</p>
-          <p>Aplikasi ini membantu pengguna mengenal area wisata secara visual sebelum berkunjung langsung.</p>
-        </div>
+      <section class="sheet-content hidden about-layout" data-sheet="about">
+        <header class="about-copy">
+          <span class="about-kicker">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="12" cy="12" r="9" />
+              <path d="M12 11v6M12 7h.01" />
+            </svg>
+            Tentang Aplikasi
+          </span>
+          <h3>Dungkluruk AR</h3>
+          <p>
+            Dungkluruk AR adalah aplikasi WebXR yang menampilkan kawasan wisata Dungkluruk dalam bentuk model
+            3D interaktif dan Augmented Reality.
+          </p>
+          <p>
+            Aplikasi ini membantu pengguna mengenal area wisata secara visual sebelum berkunjung langsung.
+          </p>
+          <div class="about-version">
+            <span>Versi aplikasi</span>
+            <strong data-app-version>2.0.0</strong>
+          </div>
+        </header>
+
         <dl class="about-meta">
-          <div><dt>Versi</dt><dd data-app-version>2.0.0</dd></div>
-          <div><dt>Teknologi</dt><dd>WebXR, Three.js, model 3D</dd></div>
-          <div><dt>Hardware</dt><dd>Kamera belakang, sensor gerak, GPU dengan WebGL2, dan perangkat yang mendukung ARCore atau ARKit.</dd></div>
-          <div><dt>Android AR</dt><dd>Android dengan Google Play Services for AR serta browser Chromium yang mendukung WebXR.</dd></div>
-          <div><dt>iPhone / iPad</dt><dd>Safari dengan AR Quick Look dan perangkat yang mendukung ARKit.</dd></div>
-          <div><dt>Preview 3D</dt><dd>Browser modern dengan JavaScript ES Modules dan WebGL2, termasuk desktop.</dd></div>
-          <div>
-            <dt>Cek dukungan</dt>
-            <dd class="compatibility-links">
-              <a href="https://developers.google.com/ar/develop/webxr/requirements" target="_blank" rel="noopener noreferrer">Persyaratan WebXR</a>
-              <a href="https://developers.google.com/ar/devices" target="_blank" rel="noopener noreferrer">Perangkat ARCore</a>
-              <a href="https://developer.apple.com/documentation/ARKit" target="_blank" rel="noopener noreferrer">Dokumentasi ARKit</a>
-              <a href="https://developer.apple.com/augmented-reality/quick-look/" target="_blank" rel="noopener noreferrer">AR Quick Look</a>
+          <div class="about-meta-card">
+            <dt>Teknologi</dt>
+            <dd>WebXR, Three.js, model 3D</dd>
+          </div>
+          <div class="about-meta-card">
+            <dt>Hardware</dt>
+            <dd>
+              Kamera belakang, sensor gerak, GPU dengan WebGL2, dan perangkat yang mendukung ARCore atau
+              ARKit.
             </dd>
           </div>
-          <div><dt>Dibuat oleh</dt><dd>Tim Dungkluruk AR</dd></div>
+          <div class="about-meta-card">
+            <dt>Android AR</dt>
+            <dd>Android dengan Google Play Services for AR serta browser Chromium yang mendukung WebXR.</dd>
+          </div>
+          <div class="about-meta-card">
+            <dt>iPhone / iPad</dt>
+            <dd>Safari dengan AR Quick Look dan perangkat yang mendukung ARKit.</dd>
+          </div>
+          <div class="about-meta-card">
+            <dt>Preview 3D</dt>
+            <dd>Browser modern dengan JavaScript ES Modules dan WebGL2, termasuk desktop.</dd>
+          </div>
+          <div class="about-meta-card about-author">
+            <dt>Dibuat oleh</dt>
+            <dd>Tim Dungkluruk AR</dd>
+          </div>
+          <div class="about-meta-card about-support">
+            <dt>Cek dukungan</dt>
+            <dd class="compatibility-links">
+              <a
+                href="https://developers.google.com/ar/develop/webxr/requirements"
+                target="_blank"
+                rel="noopener noreferrer"
+                >Persyaratan WebXR</a
+              >
+              <a href="https://developers.google.com/ar/devices" target="_blank" rel="noopener noreferrer"
+                >Perangkat ARCore</a
+              >
+              <a
+                href="https://developer.apple.com/documentation/ARKit"
+                target="_blank"
+                rel="noopener noreferrer"
+                >Dokumentasi ARKit</a
+              >
+              <a
+                href="https://developer.apple.com/augmented-reality/quick-look/"
+                target="_blank"
+                rel="noopener noreferrer"
+                >AR Quick Look</a
+              >
+            </dd>
+          </div>
         </dl>
       </section>
 
       <section class="sheet-content hidden settings-list" data-sheet="settings">
-        <label><span><strong>Tampilkan label titik</strong><small>Menampilkan nomor lokasi aktif.</small></span><input id="setting-labels" type="checkbox" checked /></label>
-        <label><span><strong>Panduan saat mulai AR</strong><small>Menampilkan perintah pencarian permukaan.</small></span><input id="setting-guide" type="checkbox" checked /></label>
-        <label><span><strong>Ukuran awal model</strong><small>Digunakan saat model ditempatkan.</small></span>
+        <label
+          ><span><strong>Tampilkan label titik</strong><small>Menampilkan nomor lokasi aktif.</small></span
+          ><input id="setting-labels" type="checkbox" checked
+        /></label>
+        <label
+          ><span
+            ><strong>Panduan saat mulai AR</strong
+            ><small>Menampilkan perintah pencarian permukaan.</small></span
+          ><input id="setting-guide" type="checkbox" checked
+        /></label>
+        <label
+          ><span><strong>Ukuran awal model</strong><small>Digunakan saat model ditempatkan.</small></span>
           <select id="setting-model-size">
             <option value="0.8">Kecil</option>
             <option value="1" selected>Normal</option>
             <option value="1.25">Besar</option>
           </select>
         </label>
-        <button id="setting-reset-model" class="setting-command" type="button">Atur ulang posisi model</button>
+        <button id="setting-reset-model" class="setting-command" type="button">
+          Atur ulang posisi model
+        </button>
       </section>
 
       <section class="sheet-content hidden detail-sheet" data-sheet="detail">
@@ -185,7 +379,7 @@
     <div id="gesture-hint" class="hidden"></div>
 
     <div id="focus-direction" class="hidden" aria-hidden="true">
-      <svg viewBox="0 0 24 24"><path d="M12 4 20 18H4Z"/></svg>
+      <svg viewBox="0 0 24 24"><path d="M12 4 20 18H4Z" /></svg>
     </div>
 
     <div id="hotspot-layer"></div>
@@ -198,16 +392,16 @@
 
     <div class="button-container">
       <button class="nav-button" id="prev-button" type="button" aria-label="Titik sebelumnya">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 5-7 7 7 7Z"/></svg>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 5-7 7 7 7Z" /></svg>
       </button>
       <span class="button-text" id="button-text">Beranda</span>
       <button class="nav-button" id="next-button" type="button" aria-label="Titik berikutnya">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 5 7 7-7 7Z"/></svg>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 5 7 7-7 7Z" /></svg>
       </button>
     </div>
 
     <div id="nav-dots" aria-hidden="true"></div>
 
-    <script type="module" src="app.js"></script>
+    <script type="module" src="app.ts"></script>
   </body>
 </html>
