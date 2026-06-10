@@ -1,8 +1,6 @@
 const CACHE_NAME = "dungkluruk-ar-v3";
 const PRECACHE_URLS = [
   "./",
-  "./assets/dungkluruk.webp",
-  "./assets/ar_icon.png",
   "./assets/draco/draco_decoder.js",
   "./assets/draco/draco_decoder.wasm",
   "./assets/draco/draco_wasm_wrapper.js",

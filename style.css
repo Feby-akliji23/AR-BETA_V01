@@ -246,7 +246,7 @@ body:not(.ar-active) #side-menu .danger {
   height: 38px;
   flex: 0 0 auto;
   border-radius: 50%;
-  background-image: url("./assets/dungkluruk.webp");
+  background-image: var(--img-dungkluruk);
   background-position: center;
   background-size: cover;
 }
@@ -315,7 +315,9 @@ body:not(.ar-active) #side-menu .danger {
   width: 66px;
   height: 66px;
   border-radius: 12px;
-  background: url("./assets/dungkluruk.webp") center / cover;
+  background-image: var(--img-dungkluruk);
+  background-position: center;
+  background-size: cover;
 }
 
 .home-hero strong {
@@ -506,7 +508,11 @@ body:not(.ar-active) #side-menu .danger {
   width: 100%;
   aspect-ratio: 16 / 8;
   border-radius: 14px;
-  background: #e7ece8 url("./assets/dungkluruk.webp") center / contain no-repeat;
+  background-color: #e7ece8;
+  background-image: var(--img-dungkluruk);
+  background-position: center;
+  background-size: contain;
+  background-repeat: no-repeat;
 }
 
 .detail-heading {
@@ -692,7 +698,10 @@ body.hide-ar-guide #ar-instructions {
   width: 19px;
   height: 19px;
   flex: 0 0 auto;
-  background: url("./assets/ar_icon.png") center / contain no-repeat;
+  background-image: var(--img-ar-icon);
+  background-position: center;
+  background-size: contain;
+  background-repeat: no-repeat;
   content: "";
 }
 
@@ -1178,7 +1187,7 @@ body.ar-active .preview-hotspot {
   flex: 0 0 auto;
   border: 1px solid rgba(255, 255, 255, 0.52);
   border-radius: 10px;
-  background-image: url("./assets/dungkluruk.webp");
+  background-image: var(--img-dungkluruk);
   background-position: center;
   background-size: cover;
 }

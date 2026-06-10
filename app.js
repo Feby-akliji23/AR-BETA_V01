@@ -1,4 +1,6 @@
 import "@google/model-viewer";
+import dungklurukUrl from "./assets/dungkluruk.webp";
+import arIconUrl from "./assets/ar_icon.png";
 import { THREE } from "./modules/three.js";
 import { projectConfig } from "./modules/config.js";
 import { getDom } from "./modules/dom.js";
@@ -25,6 +27,9 @@ import {
   setNavDots,
   updateFocusDirection,
 } from "./modules/ui.js";
+
+document.documentElement.style.setProperty("--img-dungkluruk", `url("${dungklurukUrl}")`);
+document.documentElement.style.setProperty("--img-ar-icon", `url("${arIconUrl}")`);
 
 const dom = getDom();
 const { hotspots } = projectConfig;
