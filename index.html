@@ -1,42 +1,20 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="id">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>AR Tajuk Smart Tourism</title>
-    <script src="https://unpkg.com/three@0.126.0/build/three.min.js"></script>
-    <script src="https://unpkg.com/three@0.126.0/examples/js/loaders/GLTFLoader.js"></script>
-    <script src="https://unpkg.com/three@0.126.0/examples/js/loaders/DRACOLoader.js"></script>
-    <script src="https://unpkg.com/three@0.126.0/examples/js/loaders/RGBELoader.js"></script>
-    <script src="https://unpkg.com/three@0.126.0/examples/js/controls/OrbitControls.js"></script>
-    <script
-      type="module"
-      src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.5.0/model-viewer.min.js"
-    ></script>
     <link rel="stylesheet" type="text/css" href="style.css" />
   </head>
   <body>
     <model-viewer
       id="model-viewer"
-      src="./assets/final ar.glb"
-      alt="Dungkluruk"
-      skybox-image="./assets/spruit_sunrise_1k_HDR.hdr"
       camera-controls
-      camera-orbit="-408.8deg 61.96deg 0.99999m"
-      camera-target="-0.003m 0.5722m 0.0391m"
-      field-of-view="45deg"
-      min-field-of-view="25deg"
-      max-field-of-view="45deg"
       interpolation-decay="200"
       min-camera-orbit="auto auto 5%"
-      exposure="1"
-      shadow-intensity="1"
-      scale="0.8 0.8 0.8"
-      orientation="0deg 0deg 0deg"
       xr-environment
       ar
-      ar-modes="quick-look"
-      ios-src="./assets/COBA OBJ.usdz"
+      ar-modes="webxr quick-look"
       quick-look-browsers="safari"
     >
       <button class="model-viewer-ar-trigger" slot="ar-button" type="button" tabindex="-1" aria-hidden="true"></button>
@@ -47,12 +25,12 @@
     <div id="topbar">
       <button id="menu-button" type="button" aria-label="Menu">☰</button>
       <div>
-        <h1>Dungkluruk AR</h1>
-        <p id="status">Loading model...</p>
+        <h1 data-app-title>Dungkluruk AR</h1>
+        <p id="status">Memuat model...</p>
       </div>
       <button id="enter-ar" type="button" disabled>
-        <span class="enter-ar-label-full">View in your space</span>
-        <span class="enter-ar-label-short">View AR</span>
+        <span class="enter-ar-label-full">Lihat di ruang Anda</span>
+        <span class="enter-ar-label-short">Lihat AR</span>
       </button>
     </div>
 
@@ -62,8 +40,8 @@
       <div class="menu-profile">
         <span></span>
         <div>
-          <strong>Dungkluruk AR</strong>
-          <small>v1.0.0</small>
+          <strong data-app-title>Dungkluruk AR</strong>
+          <small>v<span data-app-version>2.0.0</span></small>
         </div>
       </div>
       <nav class="menu-navigation">
@@ -107,11 +85,11 @@
         </div>
         <div class="sheet-actions">
           <button id="sheet-start-ar" class="primary-action" type="button">Mulai AR</button>
-          <button id="sheet-preview" type="button">Lihat Preview 3D</button>
+          <button id="sheet-preview" type="button">Lihat Pratinjau 3D</button>
         </div>
         <div class="summary-grid">
-          <div><strong>9</strong><span>Titik wisata</span></div>
-          <div><strong>Dungkluruk</strong><span>Model aktif</span></div>
+          <div><strong id="hotspot-count">9</strong><span>Titik wisata</span></div>
+          <div><strong id="active-model-name">Dungkluruk</strong><span>Model aktif</span></div>
           <div><strong id="model-status">Siap</strong><span>Status model</span></div>
         </div>
       </section>
@@ -119,11 +97,11 @@
       <section class="sheet-content guide-list" data-sheet="guide">
         <div>
           <svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="21"/><path d="m28 23-9 9 9 9M19 32h26M36 23l9 9-9 9"/></svg>
-          <span><strong>Pilih titik lokasi</strong><small>Gunakan tombol Next / Prev untuk berpindah tempat.</small></span>
+          <span><strong>Pilih titik lokasi</strong><small>Gunakan tombol Berikutnya / Sebelumnya untuk berpindah tempat.</small></span>
         </div>
         <div>
           <svg viewBox="0 0 64 64" aria-hidden="true"><rect x="12" y="14" width="40" height="34" rx="5"/><path d="M23 54h18M32 48v6M21 25h22M21 32h15"/><circle cx="45" cy="39" r="3"/></svg>
-          <span><strong>Masuk ke mode AR</strong><small>Tekan “View in your space”, lalu arahkan kamera ke lantai.</small></span>
+          <span><strong>Masuk ke mode AR</strong><small>Tekan “Lihat di ruang Anda”, lalu arahkan kamera ke lantai.</small></span>
         </div>
         <div>
           <svg viewBox="0 0 64 64" aria-hidden="true"><path d="M10 47h44M17 42l15-8 15 8-15 8zM32 34V15"/><path d="m24 23 8-8 8 8"/><circle cx="32" cy="34" r="4"/></svg>
@@ -145,8 +123,21 @@
           <p>Aplikasi ini membantu pengguna mengenal area wisata secara visual sebelum berkunjung langsung.</p>
         </div>
         <dl class="about-meta">
-          <div><dt>Versi</dt><dd>1.0.0</dd></div>
+          <div><dt>Versi</dt><dd data-app-version>2.0.0</dd></div>
           <div><dt>Teknologi</dt><dd>WebXR, Three.js, model 3D</dd></div>
+          <div><dt>Hardware</dt><dd>Kamera belakang, sensor gerak, GPU dengan WebGL2, dan perangkat yang mendukung ARCore atau ARKit.</dd></div>
+          <div><dt>Android AR</dt><dd>Android dengan Google Play Services for AR serta browser Chromium yang mendukung WebXR.</dd></div>
+          <div><dt>iPhone / iPad</dt><dd>Safari dengan AR Quick Look dan perangkat yang mendukung ARKit.</dd></div>
+          <div><dt>Preview 3D</dt><dd>Browser modern dengan JavaScript ES Modules dan WebGL2, termasuk desktop.</dd></div>
+          <div>
+            <dt>Cek dukungan</dt>
+            <dd class="compatibility-links">
+              <a href="https://developers.google.com/ar/develop/webxr/requirements" target="_blank" rel="noopener noreferrer">Persyaratan WebXR</a>
+              <a href="https://developers.google.com/ar/devices" target="_blank" rel="noopener noreferrer">Perangkat ARCore</a>
+              <a href="https://developer.apple.com/documentation/ARKit" target="_blank" rel="noopener noreferrer">Dokumentasi ARKit</a>
+              <a href="https://developer.apple.com/augmented-reality/quick-look/" target="_blank" rel="noopener noreferrer">AR Quick Look</a>
+            </dd>
+          </div>
           <div><dt>Dibuat oleh</dt><dd>Tim Dungkluruk AR</dd></div>
         </dl>
       </section>
@@ -161,7 +152,7 @@
             <option value="1.25">Besar</option>
           </select>
         </label>
-        <button id="setting-reset-model" class="setting-command" type="button">Reset posisi model</button>
+        <button id="setting-reset-model" class="setting-command" type="button">Atur ulang posisi model</button>
       </section>
 
       <section class="sheet-content hidden detail-sheet" data-sheet="detail">
@@ -179,7 +170,7 @@
       </section>
     </div>
 
-    <div id="ar-status" class="hidden">Scan permukaan datar</div>
+    <div id="ar-status" class="hidden">Pindai permukaan datar</div>
 
     <div id="ar-instructions" class="hidden">Gerakkan kamera perlahan ke arah lantai.</div>
 
@@ -193,7 +184,9 @@
 
     <div id="gesture-hint" class="hidden"></div>
 
-    <div id="focus-direction" class="hidden" aria-hidden="true">▲</div>
+    <div id="focus-direction" class="hidden" aria-hidden="true">
+      <svg viewBox="0 0 24 24"><path d="M12 4 20 18H4Z"/></svg>
+    </div>
 
     <div id="hotspot-layer"></div>
 
@@ -204,9 +197,13 @@
     </div>
 
     <div class="button-container">
-      <button class="nav-button" id="prev-button" type="button">&#9664;</button>
-      <span class="button-text" id="button-text">Home</span>
-      <button class="nav-button" id="next-button" type="button">&#9654;</button>
+      <button class="nav-button" id="prev-button" type="button" aria-label="Titik sebelumnya">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 5-7 7 7 7Z"/></svg>
+      </button>
+      <span class="button-text" id="button-text">Beranda</span>
+      <button class="nav-button" id="next-button" type="button" aria-label="Titik berikutnya">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 5 7 7-7 7Z"/></svg>
+      </button>
     </div>
 
     <div id="nav-dots" aria-hidden="true"></div>

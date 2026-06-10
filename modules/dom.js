@@ -2,6 +2,10 @@ export function getDom() {
   return {
     canvas: document.getElementById("scene"),
     modelViewer: document.getElementById("model-viewer"),
+    appTitles: Array.from(document.querySelectorAll("[data-app-title]")),
+    appVersions: Array.from(document.querySelectorAll("[data-app-version]")),
+    modelName: document.getElementById("active-model-name"),
+    hotspotCount: document.getElementById("hotspot-count"),
     statusText: document.getElementById("status"),
     enterArButton: document.getElementById("enter-ar"),
     arStatus: document.getElementById("ar-status"),

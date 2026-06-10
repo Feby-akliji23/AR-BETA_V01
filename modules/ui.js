@@ -100,7 +100,7 @@ export function setHotspotState(elements, activeIndex, buttonText, hotspots) {
     if (index !== activeIndex) element.classList.remove("card-forced-open");
     if (index === activeIndex && !wasActive) element.classList.remove("card-collapsed");
   });
-  buttonText.textContent = activeIndex === -1 ? "Home" : hotspots[activeIndex].buttonText;
+  buttonText.textContent = activeIndex === -1 ? "Beranda" : hotspots[activeIndex].buttonText;
 }
 
 export function setArPlacementState(state, deps) {
@@ -114,7 +114,6 @@ export function setArPlacementState(state, deps) {
     statusText,
     hideGestureHint,
     hideFocusDirection,
-    stopModelRotation,
     interactionToolbar,
   } = deps;
 
@@ -130,7 +129,6 @@ export function setArPlacementState(state, deps) {
     interactionToolbar.classList.add("hidden");
     hideGestureHint();
     hideFocusDirection();
-    stopModelRotation();
     return;
   }
 
@@ -149,7 +147,6 @@ export function setArPlacementState(state, deps) {
     interactionToolbar.classList.add("hidden");
     hideGestureHint();
     hideFocusDirection();
-    stopModelRotation();
     return;
   }
 
@@ -157,9 +154,9 @@ export function setArPlacementState(state, deps) {
     document.body.classList.remove("ar-placed");
     reticle.visible = false;
     surfaceGrid.visible = false;
-    arStatus.textContent = "Scan permukaan datar";
+    arStatus.textContent = "Pindai permukaan datar";
     arInstructions.textContent = "Gerakkan kamera perlahan ke arah lantai.";
-    statusText.textContent = "Scan permukaan datar";
+    statusText.textContent = "Pindai permukaan datar";
     arStatus.classList.remove("hidden");
     arInstructions.classList.remove("hidden");
     arScanReticle.classList.remove("hidden", "ready", "loading");
@@ -168,7 +165,6 @@ export function setArPlacementState(state, deps) {
     interactionToolbar.classList.add("hidden");
     hideGestureHint();
     hideFocusDirection();
-    stopModelRotation();
     return;
   }
 
@@ -189,7 +185,6 @@ export function setArPlacementState(state, deps) {
     interactionToolbar.classList.add("hidden");
     hideGestureHint();
     hideFocusDirection();
-    stopModelRotation();
     return;
   }
 
@@ -211,7 +206,6 @@ export function setArPlacementState(state, deps) {
     interactionToolbar.classList.add("hidden");
     hideGestureHint();
     hideFocusDirection();
-    stopModelRotation();
     return;
   }
 

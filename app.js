@@ -1,11 +1,9 @@
-import { createCameraTween, createModelRotationTween } from "./modules/animation.js";
+import "@google/model-viewer";
+import { THREE } from "./modules/three.js";
+import { projectConfig } from "./modules/config.js";
 import { getDom } from "./modules/dom.js";
 import { setupArGestures } from "./modules/gestures.js";
-import { hotspots } from "./modules/hotspots.js";
-import {
-  getXrProjectionCamera,
-  normalizeAngle,
-} from "./modules/math.js";
+import { projectWorldToDom } from "./modules/math.js";
 import {
   createModelInstance,
   createReticle,
@@ -13,9 +11,7 @@ import {
   createGestureIndicator,
   createThreeScene,
   frameObject,
-  getPreviewHomeTarget,
   loadModel,
-  MODEL_BASE_SCALE,
   resetPreviewCamera,
   setupEnvironment,
 } from "./modules/scene.js";
@@ -31,8 +27,7 @@ import {
 } from "./modules/ui.js";
 
 const dom = getDom();
-const cameraTween = createCameraTween();
-const modelRotationTween = createModelRotationTween();
+const { hotspots } = projectConfig;
 const gestureHint = createGestureHintController(dom.gestureHint);
 
 let renderer;
@@ -53,7 +48,6 @@ let isInAR = false;
 let arPlacementState = "preview";
 let lastHitMatrix = null;
 let suppressPlacementUntil = 0;
-let hitSamples = [];
 let stableHitSince = 0;
 let unstableHitSince = 0;
 let lastHitSeenAt = 0;
@@ -62,6 +56,10 @@ let scanStartedAt = 0;
 let scanAdviceIndex = -1;
 let previewHotspotElements = [];
 let supportsWebXrAr = false;
+let hitTestRetryAfter = 0;
+let hitSampleCursor = 0;
+let hitSampleCount = 0;
+let previewCameraAnimationFrame = 0;
 
 const HIT_SAMPLE_LIMIT = 18;
 const HIT_SAMPLE_MINIMUM = 10;
@@ -73,67 +71,144 @@ const HIT_LOST_GRACE = 700;
 const HIT_SMOOTHING = 0.22;
 const CARD_HIDE_MODEL_SCALE = 0.82;
 const CARD_SHOW_MODEL_SCALE = 0.9;
+const hitSamples = Array.from({ length: HIT_SAMPLE_LIMIT }, () => new THREE.Vector3());
 const smoothedHitPosition = new THREE.Vector3();
 const smoothedHitQuaternion = new THREE.Quaternion();
 const smoothedHitScale = new THREE.Vector3(1, 1, 1);
+const hitMatrixScratch = new THREE.Matrix4();
+const hitPositionScratch = new THREE.Vector3();
+const hitQuaternionScratch = new THREE.Quaternion();
+const smoothedHitMatrix = new THREE.Matrix4();
+const hitCenterScratch = new THREE.Vector3();
+const lastHitMatrixValue = new THREE.Matrix4();
+const hotspotWorldPositionScratch = new THREE.Vector3();
+const focusedProjection = {
+  x: 0,
+  y: 0,
+  z: 0,
+  screenX: 0,
+  screenY: 0,
+  behindCamera: false,
+};
+const SETTINGS_STORAGE_KEY = "dungkluruk-ar-settings";
 const SCAN_ADVICE = [
   { after: 0, text: "Gerakkan kamera perlahan ke arah lantai." },
   { after: 4000, text: "Arahkan kamera ke lantai yang memiliki pola atau tekstur." },
   { after: 8000, text: "Mundur sedikit agar area lantai terlihat lebih luas." },
   { after: 12000, text: "Pastikan ruangan cukup terang, lalu gerakkan kamera kiri dan kanan." },
 ];
-const PREVIEW_HOME_ORBIT = "-408.8deg 61.96deg 0.99999m";
-const PREVIEW_HOME_TARGET = "-0.003m 0.5722m 0.0391m";
+const DEBUG_HOTSPOTS = new URLSearchParams(window.location.search).has("debugHotspots");
+const USE_MODEL_VIEWER_WEBXR = false; // Set to true to force using model-viewer's AR mode instead of WebXR (for testing purposes)
 
 const hotspotElements = createHotspotElements(hotspots, dom.hotspotLayer, selectHotspot, openHotspotDetail);
 const navDotElements = createNavDots(hotspots.length, dom.navDots);
 
 init();
+registerServiceWorker();
 
 async function init() {
-  dom.modelViewer.setAttribute("scale", `${MODEL_BASE_SCALE} ${MODEL_BASE_SCALE} ${MODEL_BASE_SCALE}`);
-  ({ scene, camera, renderer, controls } = createThreeScene(dom.canvas));
-  reticle = createReticle(scene);
-  surfaceGrid = createSurfaceGrid(scene);
-  gestureIndicator = createGestureIndicator(scene);
-
-  await setupEnvironment(scene, renderer);
-  modelTemplate = await loadModel(dom.statusText);
-
-  previewModel = createModelInstance(modelTemplate);
-  previewModel.visible = false;
-  scene.add(previewModel);
-  frameObject(previewModel, controls);
-  previewHotspotElements = createModelViewerHotspotElements(
-    hotspots,
-    dom.modelViewer,
-    selectPreviewHotspot,
-    openHotspotDetail
-  );
-
-  await customElements.whenDefined("model-viewer");
-  await setupArSupport();
   setupOverlayGuards();
   setupEvents();
+  loadSettings();
+  applySettings(false);
 
-  gestureControls = setupArGestures({
-    renderer,
-    camera,
-    isInAR: () => isInAR,
-    isEnabled: () => isInAR && arPlacementState === "placed",
-    getPlacedModel: () => placedModel,
-    indicator: gestureIndicator,
-    showHint: gestureHint.show,
-    hideHintSoon: gestureHint.hideSoon,
+  try {
+    applyProjectConfig();
+    ({ scene, camera, renderer, controls } = createThreeScene(dom.canvas));
+    reticle = createReticle(scene);
+    surfaceGrid = createSurfaceGrid(scene);
+    gestureIndicator = createGestureIndicator(scene);
+    gestureControls = setupArGestures({
+      renderer,
+      camera,
+      isInAR: () => isInAR,
+      isEnabled: () => isInAR && arPlacementState === "placed",
+      getPlacedModel: () => placedModel,
+      indicator: gestureIndicator,
+      showHint: gestureHint.show,
+      hideHintSoon: gestureHint.hideSoon,
+    });
+    renderer.setAnimationLoop(render);
+
+    await setupEnvironment(scene, renderer);
+    modelTemplate = await loadModel(dom.statusText);
+
+    previewModel = createModelInstance(modelTemplate, hotspots, false);
+    previewModel.visible = false;
+    scene.add(previewModel);
+    frameObject(previewModel, controls);
+    previewHotspotElements = createModelViewerHotspotElements(
+      hotspots,
+      dom.modelViewer,
+      selectPreviewHotspot,
+      openHotspotDetail
+    );
+
+    await waitForCustomElement("model-viewer");
+    await setupArSupport();
+  } catch (error) {
+    dom.enterArButton.disabled = true;
+    dom.sheetStartArButton.disabled = true;
+    dom.statusText.textContent = "Aplikasi gagal dimuat. Periksa koneksi lalu muat ulang.";
+    console.error("Inisialisasi gagal", error);
+  }
+}
+
+function applyProjectConfig() {
+  const { app, model, preview } = projectConfig;
+  const modelScale = `${model.scale} ${model.scale} ${model.scale}`;
+
+  document.title = app.title;
+  dom.appTitles.forEach((element) => {
+    element.textContent = app.title;
   });
+  dom.appVersions.forEach((element) => {
+    element.textContent = app.version;
+  });
+  dom.modelName.textContent = app.modelName;
+  dom.hotspotCount.textContent = String(hotspots.length);
 
-  renderer.setAnimationLoop(render);
+  dom.modelViewer.setAttribute("src", model.glbUrl);
+  dom.modelViewer.setAttribute("ios-src", model.usdzUrl);
+  dom.modelViewer.setAttribute("alt", model.alt);
+  dom.modelViewer.setAttribute("skybox-image", model.environmentUrl);
+  dom.modelViewer.setAttribute("scale", modelScale);
+  dom.modelViewer.setAttribute("orientation", model.orientation.map((angle) => `${angle}deg`).join(" "));
+  dom.modelViewer.setAttribute("camera-orbit", preview.homeOrbit);
+  dom.modelViewer.setAttribute("camera-target", preview.homeTarget);
+  dom.modelViewer.setAttribute("field-of-view", preview.fieldOfView);
+  dom.modelViewer.setAttribute("min-field-of-view", preview.minFieldOfView);
+  dom.modelViewer.setAttribute("max-field-of-view", preview.maxFieldOfView);
+  dom.modelViewer.setAttribute("exposure", preview.exposure);
+  dom.modelViewer.setAttribute("shadow-intensity", preview.shadowIntensity);
+}
+
+function waitForCustomElement(name, timeout = 10000) {
+  return Promise.race([
+    customElements.whenDefined(name),
+    new Promise((_, reject) => {
+      window.setTimeout(() => reject(new Error(`${name} gagal dimuat`)), timeout);
+    }),
+  ]);
+}
+
+function registerServiceWorker() {
+  if (!import.meta.env.PROD || !("serviceWorker" in navigator)) return;
+
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("./sw.js").catch((error) => {
+      console.warn("Dukungan offline gagal diaktifkan", error);
+    });
+  });
 }
 
 function setupEvents() {
   window.addEventListener("resize", onResize);
   document.addEventListener("click", closePanelsFromOutside);
+  document.addEventListener("selectstart", preventTextSelection);
+  document.addEventListener("dragstart", preventTextSelection);
   dom.modelViewer.addEventListener("camera-change", updatePreviewCardWidth);
+  dom.modelViewer.addEventListener("pointerdown", cancelPreviewCameraAnimation);
   dom.menuButton.addEventListener("click", toggleSideMenu);
   dom.menuBackdrop.addEventListener("click", closeSideMenu);
   dom.menuHomeButton.addEventListener("click", openHome);
@@ -153,6 +228,10 @@ function setupEvents() {
   dom.replaceModelButton.addEventListener("click", searchAnotherPlace);
   dom.prevButton.addEventListener("click", () => navigateHotspot(-1));
   dom.nextButton.addEventListener("click", () => navigateHotspot(1));
+}
+
+function preventTextSelection(event) {
+  event.preventDefault();
 }
 
 function toggleSideMenu(event) {
@@ -210,6 +289,7 @@ function closePanelsFromOutside(event) {
 
 function exitAr() {
   closeSideMenu();
+  if (!renderer) return;
   const session = renderer.xr.getSession();
   if (session) session.end();
 }
@@ -220,13 +300,43 @@ function showPreviewHome(event) {
   resetPreviewScene();
 }
 
-function applySettings() {
+function applySettings(shouldPersist = true) {
   document.body.classList.toggle("hide-hotspot-labels", !dom.settingLabels.checked);
   document.body.classList.toggle("hide-ar-guide", !dom.settingGuide.checked);
   const scale = Number(dom.settingModelSize.value);
   if (placedModel && placedModel.visible) {
     placedModel.scale.setScalar(scale);
     placedModel.updateMatrixWorld(true);
+  }
+  if (shouldPersist) saveSettings();
+}
+
+function loadSettings() {
+  try {
+    const settings = JSON.parse(localStorage.getItem(SETTINGS_STORAGE_KEY));
+    if (!settings || typeof settings !== "object") return;
+    if (typeof settings.showLabels === "boolean") dom.settingLabels.checked = settings.showLabels;
+    if (typeof settings.showGuide === "boolean") dom.settingGuide.checked = settings.showGuide;
+    if (["0.8", "1", "1.25"].includes(String(settings.modelSize))) {
+      dom.settingModelSize.value = String(settings.modelSize);
+    }
+  } catch (error) {
+    console.warn("Pengaturan tersimpan tidak dapat dibaca", error);
+  }
+}
+
+function saveSettings() {
+  try {
+    localStorage.setItem(
+      SETTINGS_STORAGE_KEY,
+      JSON.stringify({
+        showLabels: dom.settingLabels.checked,
+        showGuide: dom.settingGuide.checked,
+        modelSize: dom.settingModelSize.value,
+      })
+    );
+  } catch (error) {
+    console.warn("Pengaturan tidak dapat disimpan", error);
   }
 }
 
@@ -244,7 +354,7 @@ async function setupArSupport() {
     dom.enterArButton.disabled = !supportsQuickLook;
     dom.sheetStartArButton.disabled = !supportsQuickLook;
     dom.statusText.textContent = supportsQuickLook
-      ? "Ready for AR Quick Look"
+      ? "Siap untuk AR Quick Look"
       : "WebXR AR tidak tersedia di browser ini";
     return;
   }
@@ -255,15 +365,15 @@ async function setupArSupport() {
     dom.enterArButton.disabled = !canStartAr;
     dom.sheetStartArButton.disabled = !canStartAr;
     dom.statusText.textContent = supportsWebXrAr
-      ? "Ready for WebXR AR"
+      ? "Siap untuk WebXR AR"
       : supportsQuickLook
-        ? "Ready for AR Quick Look"
-        : "Perangkat belum mendukung immersive AR";
+        ? "Siap untuk AR Quick Look"
+        : "Perangkat belum mendukung AR imersif";
   } catch (error) {
     dom.enterArButton.disabled = !supportsQuickLook;
     dom.sheetStartArButton.disabled = !supportsQuickLook;
     dom.statusText.textContent = supportsQuickLook
-      ? "Ready for AR Quick Look"
+      ? "Siap untuk AR Quick Look"
       : "Tidak bisa mengecek dukungan WebXR AR";
   }
 }
@@ -271,27 +381,32 @@ async function setupArSupport() {
 async function startAr() {
   if (!modelTemplate) return;
 
-  if (!supportsWebXrAr && isIosDevice() && typeof dom.modelViewer.activateAR === "function") {
+  if (
+    typeof dom.modelViewer.activateAR === "function" &&
+    (USE_MODEL_VIEWER_WEBXR || (!supportsWebXrAr && isIosDevice()))
+  ) {
     closeSideMenu();
     dom.infoSheet.classList.add("hidden");
-    resetToHome(false);
+    showAllModelViewerHotspots();
     try {
       await dom.modelViewer.activateAR();
     } catch (error) {
-      dom.statusText.textContent = "Quick Look gagal dibuka";
+      dom.statusText.textContent = "AR model-viewer gagal dibuka";
       console.error(error);
     }
     return;
   }
+
+  let session = null;
 
   try {
     closeSideMenu();
     dom.infoSheet.classList.add("hidden");
     resetToHome(false);
 
-    const session = await navigator.xr.requestSession("immersive-ar", {
-      requiredFeatures: ["hit-test"],
-      optionalFeatures: ["dom-overlay", "local-floor"],
+    session = await navigator.xr.requestSession("immersive-ar", {
+      requiredFeatures: ["hit-test", "dom-overlay"],
+      optionalFeatures: ["local-floor"],
       domOverlay: { root: document.body },
     });
 
@@ -311,13 +426,34 @@ async function startAr() {
     await renderer.xr.setSession(session);
     setArPlacementState("scanning");
   } catch (error) {
+    if (session) {
+      session.removeEventListener("end", onArEnded);
+      session.removeEventListener("select", placeModel);
+      try {
+        await session.end();
+      } catch (sessionEndError) {
+        console.error("Sesi AR gagal ditutup", sessionEndError);
+      }
+    }
     isInAR = false;
     document.body.classList.remove("ar-active");
-    controls.enabled = true;
+    setArPlacementState("preview");
+    dom.enterArButton.classList.remove("hidden");
+    if (controls) controls.enabled = true;
     if (previewModel) previewModel.visible = false;
     dom.statusText.textContent = "Gagal memulai AR";
-    console.error(error);
+    console.error("AR gagal dimulai", error);
   }
+}
+
+function showAllModelViewerHotspots() {
+  currentHotspotIndex = -1;
+  previewHotspotElements.forEach((element) => {
+    element.classList.remove("hidden", "active", "card-forced-open");
+    element.classList.add("card-collapsed");
+  });
+  setNavDots(navDotElements, currentHotspotIndex);
+  dom.buttonText.textContent = "Beranda";
 }
 
 function isIosDevice() {
@@ -335,7 +471,6 @@ function placeModel() {
   placedModel.position.setFromMatrixPosition(lastHitMatrix);
   placedModel.quaternion.setFromRotationMatrix(lastHitMatrix);
   placedModel.scale.setScalar(Number(dom.settingModelSize.value));
-  placedModel.rotateY(Math.PI);
   placedModel.updateMatrixWorld(true);
 
   setArPlacementState("placed");
@@ -345,7 +480,7 @@ function placeModel() {
 function preparePlacedModel() {
   if (placedModel || !modelTemplate) return;
 
-  placedModel = createModelInstance(modelTemplate);
+  placedModel = createModelInstance(modelTemplate, hotspots, DEBUG_HOTSPOTS);
   placedModel.visible = false;
   scene.add(placedModel);
 }
@@ -357,7 +492,6 @@ function searchAnotherPlace() {
   resetHitStability();
   gestureControls.clear();
   gestureHint.hide();
-  modelRotationTween.clear();
   dom.focusDirection.classList.add("hidden");
 
   if (placedModel) placedModel.visible = false;
@@ -373,8 +507,7 @@ function onArEnded() {
   dom.sideMenu.classList.add("hidden");
   dom.menuBackdrop.classList.add("hidden");
   dom.infoSheet.classList.add("hidden");
-  hitTestSourceRequested = false;
-  hitTestSource = null;
+  clearHitTestSource();
   resetHitStability();
   gestureControls.clear();
   reticle.visible = false;
@@ -389,7 +522,14 @@ function onArEnded() {
 
   resetPreviewScene();
   requestAnimationFrame(resetPreviewScene);
-  dom.statusText.textContent = "Ready for WebXR AR";
+  setupArSupport();
+}
+
+function clearHitTestSource() {
+  if (hitTestSource && typeof hitTestSource.cancel === "function") hitTestSource.cancel();
+  hitTestSourceRequested = false;
+  hitTestSource = null;
+  hitTestRetryAfter = 0;
 }
 
 function setArPlacementState(state) {
@@ -414,7 +554,6 @@ function setArPlacementState(state) {
     statusText: dom.statusText,
     hideGestureHint: gestureHint.hide,
     hideFocusDirection: () => dom.focusDirection.classList.add("hidden"),
-    stopModelRotation: modelRotationTween.clear,
     interactionToolbar: dom.interactionToolbar,
   });
 }
@@ -422,14 +561,12 @@ function setArPlacementState(state) {
 function render(timestamp, frame) {
   if (!isInAR) return;
 
-  modelRotationTween.update(placedModel);
-
   const session = renderer.xr.getSession();
   if (session && frame && arPlacementState !== "placed") updateHitTest(frame);
   updateScanGuidance();
 
-  updateHotspotPositions();
   renderer.render(scene, camera);
+  updateHotspotPositions();
 }
 
 function updateScanGuidance() {
@@ -450,13 +587,10 @@ function updateHitTest(frame) {
   const session = renderer.xr.getSession();
   const referenceSpace = renderer.xr.getReferenceSpace();
 
-  if (!hitTestSourceRequested) {
-    session.requestReferenceSpace("viewer").then((viewerSpace) => {
-      session.requestHitTestSource({ space: viewerSpace }).then((source) => {
-        hitTestSource = source;
-      });
-    });
-    hitTestSourceRequested = true;
+  if (!session || !referenceSpace) return;
+
+  if (!hitTestSourceRequested && performance.now() >= hitTestRetryAfter) {
+    requestHitTestSource(session);
   }
 
   if (!hitTestSource) {
@@ -471,8 +605,8 @@ function updateHitTest(frame) {
     const pose = hit.getPose(referenceSpace);
     if (!pose) return;
 
-    const hitMatrix = new THREE.Matrix4().fromArray(pose.transform.matrix);
-    updateStableHit(hitMatrix);
+    hitMatrixScratch.fromArray(pose.transform.matrix);
+    updateStableHit(hitMatrixScratch);
   } else {
     if (
       (!placedModel || !placedModel.visible) &&
@@ -487,30 +621,52 @@ function updateHitTest(frame) {
   }
 }
 
-function updateStableHit(hitMatrix) {
-  const position = new THREE.Vector3().setFromMatrixPosition(hitMatrix);
-  const quaternion = new THREE.Quaternion().setFromRotationMatrix(hitMatrix);
+async function requestHitTestSource(session) {
+  hitTestSourceRequested = true;
 
-  hitSamples.push(position.clone());
-  if (hitSamples.length > HIT_SAMPLE_LIMIT) hitSamples.shift();
+  try {
+    const viewerSpace = await session.requestReferenceSpace("viewer");
+    const source = await session.requestHitTestSource({ space: viewerSpace });
+    if (renderer.xr.getSession() !== session) {
+      if (typeof source.cancel === "function") source.cancel();
+      return;
+    }
+    hitTestSource = source;
+  } catch (error) {
+    if (renderer.xr.getSession() !== session) return;
+    hitTestSource = null;
+    hitTestSourceRequested = false;
+    hitTestRetryAfter = performance.now() + 1500;
+    dom.statusText.textContent = "Mencoba mendeteksi permukaan kembali";
+    console.error("Sumber hit-test gagal dibuat", error);
+  }
+}
+
+function updateStableHit(hitMatrix) {
+  hitPositionScratch.setFromMatrixPosition(hitMatrix);
+  hitQuaternionScratch.setFromRotationMatrix(hitMatrix);
+
+  hitSamples[hitSampleCursor].copy(hitPositionScratch);
+  hitSampleCursor = (hitSampleCursor + 1) % HIT_SAMPLE_LIMIT;
+  hitSampleCount = Math.min(hitSampleCount + 1, HIT_SAMPLE_LIMIT);
 
   if (!hasSmoothedHit) {
-    smoothedHitPosition.copy(position);
-    smoothedHitQuaternion.copy(quaternion);
+    smoothedHitPosition.copy(hitPositionScratch);
+    smoothedHitQuaternion.copy(hitQuaternionScratch);
     hasSmoothedHit = true;
   } else {
-    smoothedHitPosition.lerp(position, HIT_SMOOTHING);
-    smoothedHitQuaternion.slerp(quaternion, HIT_SMOOTHING);
+    smoothedHitPosition.lerp(hitPositionScratch, HIT_SMOOTHING);
+    smoothedHitQuaternion.slerp(hitQuaternionScratch, HIT_SMOOTHING);
   }
 
-  const smoothedMatrix = new THREE.Matrix4().compose(
+  smoothedHitMatrix.compose(
     smoothedHitPosition,
     smoothedHitQuaternion,
     smoothedHitScale
   );
-  reticle.matrix.copy(smoothedMatrix);
+  reticle.matrix.copy(smoothedHitMatrix);
   reticle.matrixWorldNeedsUpdate = true;
-  surfaceGrid.matrix.copy(smoothedMatrix);
+  surfaceGrid.matrix.copy(smoothedHitMatrix);
   surfaceGrid.matrixWorldNeedsUpdate = true;
 
   if (placedModel && placedModel.visible) return;
@@ -537,22 +693,29 @@ function updateStableHit(hitMatrix) {
     return;
   }
 
-  lastHitMatrix = smoothedMatrix.clone();
+  lastHitMatrixValue.copy(smoothedHitMatrix);
+  lastHitMatrix = lastHitMatrixValue;
   if (arPlacementState !== "ready") setArPlacementState("ready");
 }
 
 function isHitStable(positionTolerance = HIT_POSITION_TOLERANCE) {
-  if (hitSamples.length < HIT_SAMPLE_MINIMUM) return false;
+  if (hitSampleCount < HIT_SAMPLE_MINIMUM) return false;
 
-  const center = new THREE.Vector3();
-  hitSamples.forEach((sample) => center.add(sample));
-  center.multiplyScalar(1 / hitSamples.length);
+  hitCenterScratch.set(0, 0, 0);
+  for (let index = 0; index < hitSampleCount; index += 1) {
+    hitCenterScratch.add(hitSamples[index]);
+  }
+  hitCenterScratch.multiplyScalar(1 / hitSampleCount);
 
-  return hitSamples.every((sample) => sample.distanceTo(center) <= positionTolerance);
+  for (let index = 0; index < hitSampleCount; index += 1) {
+    if (hitSamples[index].distanceTo(hitCenterScratch) > positionTolerance) return false;
+  }
+  return true;
 }
 
 function resetHitStability() {
-  hitSamples = [];
+  hitSampleCursor = 0;
+  hitSampleCount = 0;
   stableHitSince = 0;
   unstableHitSince = 0;
   lastHitSeenAt = 0;
@@ -575,18 +738,14 @@ function updateHotspotPositions() {
   }
 
   activeModel.updateMatrixWorld(true);
-  const hotspotAnchor = activeModel.userData.coordinateAnchor || activeModel;
-  const projectionCamera = getXrProjectionCamera(renderer, camera);
-  const hotspot = hotspots[currentHotspotIndex];
+  const hotspotAnchor = activeModel.userData.hotspotAnchors?.[currentHotspotIndex];
   const element = hotspotElements[currentHotspotIndex];
-  const worldPosition = hotspot.position.clone().applyMatrix4(hotspotAnchor.matrixWorld);
-  const projected = worldPosition.project(projectionCamera);
-  const behindCamera = projected.z < -1 || projected.z > 1;
-  const screenX = (projected.x * 0.5 + 0.5) * window.innerWidth;
-  const screenY = (-projected.y * 0.5 + 0.5) * window.innerHeight;
-  const focusedProjected = { x: projected.x, y: projected.y, z: projected.z, screenX, screenY, behindCamera };
+  if (!hotspotAnchor) return;
 
-  if (behindCamera) {
+  hotspotAnchor.getWorldPosition(hotspotWorldPositionScratch);
+  projectWorldToDom(renderer, camera, hotspotWorldPositionScratch, focusedProjection);
+
+  if (focusedProjection.behindCamera) {
     element.classList.add("hidden");
   } else {
     element.classList.remove("hidden");
@@ -596,13 +755,13 @@ function updateHotspotPositions() {
     } else if (isCardHidden && activeModel.scale.x > CARD_SHOW_MODEL_SCALE) {
       element.classList.remove("card-hidden");
     }
-    element.style.left = screenX + "px";
-    element.style.top = screenY + "px";
+    element.style.left = focusedProjection.screenX + "px";
+    element.style.top = focusedProjection.screenY + "px";
   }
 
   updateFocusDirection(
     dom.focusDirection,
-    focusedProjected,
+    focusedProjection,
     isInAR && arPlacementState === "placed" && currentHotspotIndex !== -1
   );
 }
@@ -638,7 +797,6 @@ function updateHotspotState(focusSelection = true) {
   setNavDots(navDotElements, currentHotspotIndex);
   if (focusSelection) {
     focusSelectedHotspot();
-    focusArHotspot();
   }
   requestAnimationFrame(updatePreviewCardWidth);
 }
@@ -664,12 +822,10 @@ function resetToHome(animate) {
   setHotspotState(hotspotElements, currentHotspotIndex, dom.buttonText, hotspots);
   setHotspotState(previewHotspotElements, currentHotspotIndex, dom.buttonText, hotspots);
   setNavDots(navDotElements, currentHotspotIndex);
-  if (!animate) cameraTween.clear();
-  else focusSelectedHotspot();
+  if (animate) focusSelectedHotspot();
 }
 
 function resetPreviewScene() {
-  cameraTween.clear();
   currentHotspotIndex = -1;
   setHotspotState(hotspotElements, currentHotspotIndex, dom.buttonText, hotspots);
   setHotspotState(previewHotspotElements, currentHotspotIndex, dom.buttonText, hotspots);
@@ -682,8 +838,10 @@ function resetPreviewScene() {
     previewModel.updateMatrixWorld(true);
   }
 
+  setModelViewerCamera(projectConfig.preview.homeOrbit, projectConfig.preview.homeTarget, false);
+  if (!camera || !controls) return;
+
   resetPreviewCamera(camera, controls, previewModel);
-  setModelViewerCamera(PREVIEW_HOME_ORBIT, PREVIEW_HOME_TARGET);
   updateHotspotPositions();
 }
 
@@ -691,7 +849,7 @@ function focusSelectedHotspot() {
   if (isInAR) return;
 
   if (currentHotspotIndex === -1) {
-    setModelViewerCamera(PREVIEW_HOME_ORBIT, PREVIEW_HOME_TARGET);
+    setModelViewerCamera(projectConfig.preview.homeOrbit, projectConfig.preview.homeTarget);
     return;
   }
 
@@ -703,35 +861,79 @@ function focusSelectedHotspot() {
   setModelViewerCamera(orbit, target);
 }
 
-function setModelViewerCamera(orbit, target) {
+function setModelViewerCamera(orbit, target, animate = true) {
   if (!dom.modelViewer) return;
-  dom.modelViewer.setAttribute("camera-orbit", orbit);
-  dom.modelViewer.setAttribute("camera-target", target);
-}
-
-function focusArHotspot() {
-  if (!isInAR || arPlacementState !== "placed" || currentHotspotIndex === -1 || !placedModel || !placedModel.visible) {
-    modelRotationTween.clear();
+  if (!animate || typeof dom.modelViewer.getCameraOrbit !== "function") {
+    cancelPreviewCameraAnimation();
+    dom.modelViewer.setAttribute("camera-orbit", orbit);
+    dom.modelViewer.setAttribute("camera-target", target);
     return;
   }
 
-  const hotspotAnchor = placedModel.userData.coordinateAnchor || placedModel;
-  placedModel.updateMatrixWorld(true);
-  const hotspotWorld = hotspots[currentHotspotIndex].position.clone().applyMatrix4(hotspotAnchor.matrixWorld);
-  const projectionCamera = getXrProjectionCamera(renderer, camera);
-  const cameraPosition = new THREE.Vector3().setFromMatrixPosition(projectionCamera.matrixWorld);
+  animateModelViewerCamera(orbit, target);
+}
 
-  const toCamera = cameraPosition.clone().sub(placedModel.position);
-  const toHotspot = hotspotWorld.clone().sub(placedModel.position);
-  toCamera.y = 0;
-  toHotspot.y = 0;
+function animateModelViewerCamera(orbit, target) {
+  cancelPreviewCameraAnimation();
 
-  if (toCamera.lengthSq() < 0.0001 || toHotspot.lengthSq() < 0.0001) return;
+  const fromOrbit = dom.modelViewer.getCameraOrbit();
+  const fromTarget = dom.modelViewer.getCameraTarget();
+  const toOrbit = parseOrbit(orbit);
+  const toTarget = parseTarget(target);
+  const thetaDelta = shortestAngle(toOrbit.theta - fromOrbit.theta);
+  const startedAt = performance.now();
+  const duration = projectConfig.preview.cameraTransitionMs;
 
-  const angleToCamera = Math.atan2(toCamera.x, toCamera.z);
-  const angleToHotspot = Math.atan2(toHotspot.x, toHotspot.z);
-  const targetRotation = placedModel.rotation.y + normalizeAngle(angleToCamera - angleToHotspot);
-  modelRotationTween.animate(placedModel, targetRotation, 700);
+  function update(time) {
+    const progress = Math.min((time - startedAt) / duration, 1);
+    const eased = smootherStep(progress);
+    const theta = fromOrbit.theta + thetaDelta * eased;
+    const phi = THREE.MathUtils.lerp(fromOrbit.phi, toOrbit.phi, eased);
+    const radius = THREE.MathUtils.lerp(fromOrbit.radius, toOrbit.radius, eased);
+    const x = THREE.MathUtils.lerp(fromTarget.x, toTarget.x, eased);
+    const y = THREE.MathUtils.lerp(fromTarget.y, toTarget.y, eased);
+    const z = THREE.MathUtils.lerp(fromTarget.z, toTarget.z, eased);
+
+    dom.modelViewer.cameraOrbit = `${theta}rad ${phi}rad ${radius}m`;
+    dom.modelViewer.cameraTarget = `${x}m ${y}m ${z}m`;
+    dom.modelViewer.jumpCameraToGoal();
+
+    if (progress < 1) {
+      previewCameraAnimationFrame = requestAnimationFrame(update);
+    } else {
+      previewCameraAnimationFrame = 0;
+    }
+  }
+
+  previewCameraAnimationFrame = requestAnimationFrame(update);
+}
+
+function cancelPreviewCameraAnimation() {
+  if (!previewCameraAnimationFrame) return;
+  cancelAnimationFrame(previewCameraAnimationFrame);
+  previewCameraAnimationFrame = 0;
+}
+
+function parseOrbit(value) {
+  const [theta, phi, radius] = value.split(/\s+/);
+  return {
+    theta: THREE.MathUtils.degToRad(Number.parseFloat(theta)),
+    phi: THREE.MathUtils.degToRad(Number.parseFloat(phi)),
+    radius: Number.parseFloat(radius),
+  };
+}
+
+function parseTarget(value) {
+  const [x, y, z] = value.split(/\s+/).map(Number.parseFloat);
+  return { x, y, z };
+}
+
+function shortestAngle(angle) {
+  return Math.atan2(Math.sin(angle), Math.cos(angle));
+}
+
+function smootherStep(value) {
+  return value * value * value * (value * (value * 6 - 15) + 10);
 }
 
 function setupOverlayGuards() {
@@ -745,6 +947,7 @@ function setupOverlayGuards() {
 }
 
 function onResize() {
+  if (!camera || !renderer) return;
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);

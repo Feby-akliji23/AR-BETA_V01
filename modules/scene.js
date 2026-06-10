@@ -1,8 +1,7 @@
-const HDR_URL = "./assets/spruit_sunrise_1k_HDR.hdr";
-const MODEL_URL = "./assets/final ar.glb";
-const DRACO_DECODER_URL = "https://www.gstatic.com/draco/versioned/decoders/1.5.7/";
-export const MODEL_BASE_SCALE = 0.8;
-export const MODEL_INTERACTION_PLANE_Y = 0.59;
+import { THREE } from "./three.js";
+import { projectConfig } from "./config.js";
+
+const { model: modelConfig } = projectConfig;
 
 export function createThreeScene(canvas) {
   const scene = new THREE.Scene();
@@ -14,10 +13,9 @@ export function createThreeScene(canvas) {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.setSize(window.innerWidth, window.innerHeight);
-  renderer.outputEncoding = THREE.sRGBEncoding;
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.25;
-  renderer.physicallyCorrectLights = true;
   renderer.xr.enabled = true;
   renderer.xr.setReferenceSpaceType("local");
 
@@ -167,7 +165,7 @@ export async function setupEnvironment(scene, renderer) {
   return new Promise((resolve) => {
     const rgbeLoader = new THREE.RGBELoader();
     rgbeLoader.load(
-      HDR_URL,
+      modelConfig.environmentUrl,
       (texture) => {
         const pmremGenerator = new THREE.PMREMGenerator(renderer);
         pmremGenerator.compileEquirectangularShader();
@@ -186,20 +184,20 @@ export async function setupEnvironment(scene, renderer) {
 
 export async function loadModel(statusText) {
   const dracoLoader = new THREE.DRACOLoader();
-  dracoLoader.setDecoderPath(DRACO_DECODER_URL);
+  dracoLoader.setDecoderPath(modelConfig.dracoDecoderUrl);
 
   const gltfLoader = new THREE.GLTFLoader();
   gltfLoader.setDRACOLoader(dracoLoader);
 
   return new Promise((resolve, reject) => {
     gltfLoader.load(
-      MODEL_URL,
+      modelConfig.glbUrl,
       (gltf) => {
         const modelTemplate = gltf.scene;
         modelTemplate.traverse((child) => {
           if (child.isMesh) child.frustumCulled = false;
         });
-        statusText.textContent = "Model ready";
+        statusText.textContent = "Model siap";
         resolve(modelTemplate);
       },
       undefined,
@@ -211,23 +209,54 @@ export async function loadModel(statusText) {
   });
 }
 
-export function createModelInstance(modelTemplate) {
+export function createModelInstance(modelTemplate, hotspotDefinitions = [], showHotspotMarkers = false) {
   const root = new THREE.Group();
-  const coordinateAnchor = modelTemplate.clone(true);
-  coordinateAnchor.scale.setScalar(MODEL_BASE_SCALE);
-  root.add(coordinateAnchor);
+  const coordinateSpace = new THREE.Group();
+  const model = modelTemplate.clone(true);
+  model.scale.setScalar(modelConfig.scale);
+  const [roll, pitch, yaw] = modelConfig.orientation.map(THREE.MathUtils.degToRad);
+  model.quaternion.setFromEuler(new THREE.Euler(pitch, yaw, roll, "YXZ"));
+  coordinateSpace.add(model);
+  root.add(coordinateSpace);
 
-  const box = new THREE.Box3().setFromObject(root);
+  const box = new THREE.Box3().setFromObject(model);
   const center = box.getCenter(new THREE.Vector3());
-  coordinateAnchor.position.set(-center.x, -box.min.y, -center.z);
+  coordinateSpace.position.set(-center.x, -box.min.y, -center.z);
   root.updateMatrixWorld(true);
 
-  root.userData.coordinateAnchor = coordinateAnchor;
-  root.userData.baseScale = MODEL_BASE_SCALE;
+  root.userData.coordinateAnchor = coordinateSpace;
+  root.userData.hotspotAnchors = createHotspotAnchors(
+    coordinateSpace,
+    hotspotDefinitions,
+    showHotspotMarkers
+  );
+  root.userData.baseScale = modelConfig.scale;
   root.userData.interactionPlaneY =
-    coordinateAnchor.position.y + MODEL_INTERACTION_PLANE_Y * MODEL_BASE_SCALE;
+    coordinateSpace.position.y + modelConfig.interactionPlaneY * modelConfig.scale;
   root.userData.localBounds = new THREE.Box3().setFromObject(root);
   return root;
+}
+
+function createHotspotAnchors(coordinateSpace, hotspotDefinitions, showMarkers) {
+  const markerGeometry = showMarkers ? new THREE.SphereGeometry(0.012, 12, 12) : null;
+  const markerMaterial = showMarkers
+    ? new THREE.MeshBasicMaterial({ color: 0xff1744, depthTest: false, depthWrite: false })
+    : null;
+
+  return hotspotDefinitions.map((hotspot, index) => {
+    const anchor = new THREE.Object3D();
+    anchor.name = `hotspot-anchor-${index + 1}`;
+    anchor.position.copy(hotspot.position);
+    coordinateSpace.add(anchor);
+
+    if (showMarkers) {
+      const marker = new THREE.Mesh(markerGeometry, markerMaterial);
+      marker.renderOrder = 1000;
+      anchor.add(marker);
+    }
+
+    return anchor;
+  });
 }
 
 export function frameObject(object, controls) {

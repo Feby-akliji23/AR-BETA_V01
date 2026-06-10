@@ -1,4 +1,6 @@
-// Positions and camera orbits are ported from the legacy model-viewer file.
+import { THREE } from "./three.js";
+
+// Edit this file when replacing the model, hotspot coordinates, or card content.
 export const hotspots = [
   {
     header: "Gunung Merbabu",
@@ -82,3 +84,32 @@ export const hotspots = [
     orbit: { theta: -654.8, phi: 67.19, radius: 0.356 },
   },
 ];
+
+export const projectConfig = {
+  app: {
+    title: "Dungkluruk AR",
+    modelName: "Dungkluruk",
+    version: "2.0.0",
+  },
+  model: {
+    glbUrl: "./assets/final-ar.glb",
+    usdzUrl: "./assets/dungkluruk.usdz",
+    environmentUrl: "./assets/spruit_sunrise_1k_HDR.hdr",
+    dracoDecoderUrl: "./assets/draco/",
+    alt: "Dungkluruk",
+    scale: 0.8,
+    orientation: [0, 0, 0],
+    interactionPlaneY: 0.59,
+  },
+  preview: {
+    homeOrbit: "-408.8deg 61.96deg 0.99999m",
+    homeTarget: "-0.003m 0.5722m 0.0391m",
+    fieldOfView: "45deg",
+    minFieldOfView: "25deg",
+    maxFieldOfView: "45deg",
+    exposure: "1",
+    shadowIntensity: "1",
+    cameraTransitionMs: 1800,
+  },
+  hotspots,
+};

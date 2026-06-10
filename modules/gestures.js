@@ -1,3 +1,4 @@
+import { THREE } from "./three.js";
 import { clamp, getTouchDistance, getXrProjectionCamera } from "./math.js";
 
 const HOLD_DURATION = 500;
