@@ -21,6 +21,7 @@ function copyDracoPlugin() {
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
   return {
+    base: process.env.GITHUB_ACTIONS ? "/AR-BETA_V01/" : "/",
     plugins: [copyDracoPlugin()],
     server: {
       host: true,
