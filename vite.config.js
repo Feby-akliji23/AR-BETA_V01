@@ -1,8 +1,30 @@
-import { defineConfig } from "vite";
+import { defineConfig, loadEnv } from "vite";
+import { resolve, join } from "path";
+import { copyFileSync, mkdirSync, existsSync, readdirSync, statSync } from "fs";
 
-export default defineConfig({
-  server: {
-    host: true,
-    allowedHosts: ["4ca7-103-125-48-10.ngrok-free.app"],
-  },
+function copyDracoPlugin() {
+  return {
+    name: "copy-draco",
+    buildStart() {
+      const src = resolve("node_modules/three/examples/jsm/libs/draco/");
+      const dest = resolve("public/assets/draco/");
+      if (!existsSync(src)) return;
+      mkdirSync(dest, { recursive: true });
+      for (const entry of readdirSync(src)) {
+        const srcPath = join(src, entry);
+        if (statSync(srcPath).isFile()) copyFileSync(srcPath, join(dest, entry));
+      }
+    },
+  };
+}
+
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), "");
+  return {
+    plugins: [copyDracoPlugin()],
+    server: {
+      host: true,
+      allowedHosts: env.ALLOWED_HOSTS ? env.ALLOWED_HOSTS.split(",") : [],
+    },
+  };
 });

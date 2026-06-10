@@ -4,30 +4,61 @@ export function createHotspotElements(hotspots, hotspotLayer, onSelect, onDetail
   return hotspots.map((hotspot, index) => {
     const item = document.createElement("div");
     item.className = "hotspot hidden";
-    item.innerHTML =
-      '<button class="hotspot-dot" type="button" aria-label="Buka titik ' +
-      hotspot.buttonText +
-      '"><span>' +
-      hotspot.buttonText +
-      '</span></button><article class="hotspot-card"><span class="hotspot-thumb"></span><span class="hotspot-copy"><strong>' +
-      hotspot.header +
-      '</strong><small>' +
-      hotspot.description +
-      '</small><button class="hotspot-detail" type="button">Lihat Detail →</button></span><button class="hotspot-close" type="button" aria-label="Tutup card">×</button></article>';
-    item.querySelector(".hotspot-dot").addEventListener("click", () => {
+
+    const dot = document.createElement("button");
+    dot.className = "hotspot-dot";
+    dot.type = "button";
+    dot.setAttribute("aria-label", "Buka titik " + hotspot.buttonText);
+    const dotLabel = document.createElement("span");
+    dotLabel.textContent = hotspot.buttonText;
+    dot.appendChild(dotLabel);
+
+    const card = document.createElement("article");
+    card.className = "hotspot-card";
+
+    const thumb = document.createElement("span");
+    thumb.className = "hotspot-thumb";
+
+    const copy = document.createElement("span");
+    copy.className = "hotspot-copy";
+
+    const header = document.createElement("strong");
+    header.textContent = hotspot.header;
+
+    const desc = document.createElement("small");
+    desc.textContent = hotspot.description;
+
+    const detailBtn = document.createElement("button");
+    detailBtn.className = "hotspot-detail";
+    detailBtn.type = "button";
+    detailBtn.textContent = "Lihat Detail →";
+
+    copy.append(header, desc, detailBtn);
+
+    const closeBtn = document.createElement("button");
+    closeBtn.className = "hotspot-close";
+    closeBtn.type = "button";
+    closeBtn.setAttribute("aria-label", "Tutup card");
+    closeBtn.textContent = "×";
+
+    card.append(thumb, copy, closeBtn);
+    item.append(dot, card);
+
+    dot.addEventListener("click", () => {
       item.classList.remove("card-collapsed");
       item.classList.add("card-forced-open");
       onSelect(index);
     });
-    item.querySelector(".hotspot-close").addEventListener("click", (event) => {
+    closeBtn.addEventListener("click", (event) => {
       event.stopPropagation();
       item.classList.add("card-collapsed");
       item.classList.remove("card-forced-open");
     });
-    item.querySelector(".hotspot-detail").addEventListener("click", (event) => {
+    detailBtn.addEventListener("click", (event) => {
       event.stopPropagation();
       onDetail(index);
     });
+
     hotspotLayer.appendChild(item);
     return item;
   });
@@ -42,33 +73,62 @@ export function createModelViewerHotspotElements(hotspots, modelViewer, onSelect
       hotspot.position.x + "m " + hotspot.position.y + "m " + hotspot.position.z + "m";
     item.dataset.normal =
       hotspot.normal.x + "m " + hotspot.normal.y + "m " + hotspot.normal.z + "m";
-    item.innerHTML =
-      '<button class="preview-hotspot-point" type="button" aria-label="Buka titik ' +
-      hotspot.buttonText +
-      '"><span>' +
-      hotspot.buttonText +
-      '</span></button><article class="hotspot-card preview-native-card"><span class="hotspot-thumb"></span>' +
-      '<span class="hotspot-copy"><strong>' +
-      hotspot.header +
-      '</strong><small>' +
-      hotspot.description +
-      '</small><button class="hotspot-detail" type="button">Lihat Detail →</button></span>' +
-      '<button class="hotspot-close" type="button" aria-label="Tutup card">×</button></article>';
-    item.querySelector(".preview-hotspot-point").addEventListener("click", (event) => {
+
+    const point = document.createElement("button");
+    point.className = "preview-hotspot-point";
+    point.type = "button";
+    point.setAttribute("aria-label", "Buka titik " + hotspot.buttonText);
+    const pointLabel = document.createElement("span");
+    pointLabel.textContent = hotspot.buttonText;
+    point.appendChild(pointLabel);
+
+    const card = document.createElement("article");
+    card.className = "hotspot-card preview-native-card";
+
+    const thumb = document.createElement("span");
+    thumb.className = "hotspot-thumb";
+
+    const copy = document.createElement("span");
+    copy.className = "hotspot-copy";
+
+    const header = document.createElement("strong");
+    header.textContent = hotspot.header;
+
+    const desc = document.createElement("small");
+    desc.textContent = hotspot.description;
+
+    const detailBtn = document.createElement("button");
+    detailBtn.className = "hotspot-detail";
+    detailBtn.type = "button";
+    detailBtn.textContent = "Lihat Detail →";
+
+    copy.append(header, desc, detailBtn);
+
+    const closeBtn = document.createElement("button");
+    closeBtn.className = "hotspot-close";
+    closeBtn.type = "button";
+    closeBtn.setAttribute("aria-label", "Tutup card");
+    closeBtn.textContent = "×";
+
+    card.append(thumb, copy, closeBtn);
+    item.append(point, card);
+
+    point.addEventListener("click", (event) => {
       event.stopPropagation();
       item.classList.remove("card-collapsed");
       item.classList.add("card-forced-open");
       onSelect(index);
     });
-    item.querySelector(".hotspot-close").addEventListener("click", (event) => {
+    closeBtn.addEventListener("click", (event) => {
       event.stopPropagation();
       item.classList.add("card-collapsed");
       item.classList.remove("card-forced-open");
     });
-    item.querySelector(".hotspot-detail").addEventListener("click", (event) => {
+    detailBtn.addEventListener("click", (event) => {
       event.stopPropagation();
       onDetail(index);
     });
+
     modelViewer.appendChild(item);
     return item;
   });

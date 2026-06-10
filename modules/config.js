@@ -1,5 +1,3 @@
-import { THREE } from "./three.js";
-
 // Edit this file when replacing the model, hotspot coordinates, or card content.
 export const hotspots = [
   {
@@ -7,8 +5,8 @@ export const hotspots = [
     description: "Tempat selfie di awan, tapi hati-hati sama anginnya!",
     detail: "Gunung Merbabu menjadi latar utama kawasan Dungkluruk. Titik ini cocok untuk menikmati bentuk pegunungan, mengenali arah kawasan, dan mengambil foto dari sudut pandang yang lebih luas.",
     buttonText: "1",
-    position: new THREE.Vector3(0.16461349837559763, 0.7458151780932667, -0.1366888814003465),
-    normal: new THREE.Vector3(0.9686974739857849, 0.23764112651768846, 0.07177672938330272),
+    position: { x: 0.16461349837559763, y: 0.7458151780932667, z: -0.1366888814003465 },
+    normal: { x: 0.9686974739857849, y: 0.23764112651768846, z: 0.07177672938330272 },
     orbit: { theta: -587.2, phi: 53.35, radius: 0.4508 },
   },
   {
@@ -16,8 +14,8 @@ export const hotspots = [
     description: "Debat seru sambil ngopi, siapa takut?",
     detail: "Pendopo merupakan area berkumpul dan beristirahat. Pengunjung dapat duduk santai, berbincang, serta menikmati suasana kawasan sebelum melanjutkan perjalanan ke titik wisata lainnya.",
     buttonText: "2",
-    position: new THREE.Vector3(0.07027693438109316, 0.6641265398779596, 0.09594816485251578),
-    normal: new THREE.Vector3(-0.023429991294623465, 0.9994364333290694, -0.02403854076873244),
+    position: { x: 0.07027693438109316, y: 0.6641265398779596, z: 0.09594816485251578 },
+    normal: { x: -0.023429991294623465, y: 0.9994364333290694, z: -0.02403854076873244 },
     orbit: { theta: -762.7, phi: 78.36, radius: 0.0745 },
   },
   {
@@ -25,8 +23,8 @@ export const hotspots = [
     description: "Spot parkir luas dan aman. Mobil kamu juga butuh tempat istirahat yang nyaman!",
     detail: "Area parkir menjadi titik awal kunjungan ke Dungkluruk. Lokasinya dirancang agar kendaraan dapat ditempatkan dengan rapi sebelum pengunjung menjelajahi kawasan wisata.",
     buttonText: "3",
-    position: new THREE.Vector3(0.005953002438934624, 0.6179612413398688, 0.39772135629382144),
-    normal: new THREE.Vector3(-0.02845223752207031, 0.8863604679399255, 0.46212075375739653),
+    position: { x: 0.005953002438934624, y: 0.6179612413398688, z: 0.39772135629382144 },
+    normal: { x: -0.02845223752207031, y: 0.8863604679399255, z: 0.46212075375739653 },
     orbit: { theta: -768.9, phi: 83.69, radius: 0.0854 },
   },
   {
@@ -34,8 +32,8 @@ export const hotspots = [
     description: "Hijau-hijau santai, selfie yuk!",
     detail: "Gardupandang menawarkan tempat untuk melihat kawasan dari sudut yang lebih terbuka. Area ini cocok untuk bersantai, menikmati pemandangan hijau, dan mengambil foto.",
     buttonText: "4",
-    position: new THREE.Vector3(0.03181884750054354, 0.6724909836216408, 0.00020099485950251378),
-    normal: new THREE.Vector3(0, 1, 0),
+    position: { x: 0.03181884750054354, y: 0.6724909836216408, z: 0.00020099485950251378 },
+    normal: { x: 0, y: 1, z: 0 },
     orbit: { theta: -677.5, phi: 79.59, radius: 0.0385 },
   },
   {
@@ -43,8 +41,8 @@ export const hotspots = [
     description: "Belanja sampe dompet nyerah!",
     detail: "Area toko menyediakan tempat bagi pengunjung untuk melihat dan membeli produk yang tersedia di kawasan Dungkluruk. Titik ini dapat dikunjungi sebelum pulang atau setelah selesai berkeliling.",
     buttonText: "5",
-    position: new THREE.Vector3(0.032752926938190534, 0.63354956207212, 0.31799526415099294),
-    normal: new THREE.Vector3(0.8282171135486284, 0, 0.5604073632860104),
+    position: { x: 0.032752926938190534, y: 0.63354956207212, z: 0.31799526415099294 },
+    normal: { x: 0.8282171135486284, y: 0, z: 0.5604073632860104 },
     orbit: { theta: -724.2, phi: 92.3, radius: 0.014 },
   },
   {
@@ -52,8 +50,8 @@ export const hotspots = [
     description: "Ini hutan pohon pinus!",
     detail: "Kalipasang merupakan area yang dikelilingi pepohonan pinus. Suasananya teduh dan cocok untuk menikmati udara segar serta mengenali karakter alam kawasan Dungkluruk.",
     buttonText: "6",
-    position: new THREE.Vector3(0.32811722861362963, 0.7051921130909486, 0.08796013053280755),
-    normal: new THREE.Vector3(-0.46139601533440144, 0.04814640729012375, -0.8858869230881503),
+    position: { x: 0.32811722861362963, y: 0.7051921130909486, z: 0.08796013053280755 },
+    normal: { x: -0.46139601533440144, y: 0.04814640729012375, z: -0.8858869230881503 },
     orbit: { theta: -590.1, phi: 94.35, radius: 0.23589 },
   },
   {
@@ -61,8 +59,8 @@ export const hotspots = [
     description: "Ayooooo!!!!",
     detail: "Kolam renang menjadi salah satu fasilitas rekreasi di kawasan Dungkluruk. Titik ini dapat digunakan pengunjung untuk bermain air dan beristirahat bersama keluarga.",
     buttonText: "7",
-    position: new THREE.Vector3(-0.019395418061787822, 0.6425466341510977, 0.17478896208975375),
-    normal: new THREE.Vector3(0, 1, 0),
+    position: { x: -0.019395418061787822, y: 0.6425466341510977, z: 0.17478896208975375 },
+    normal: { x: 0, y: 1, z: 0 },
     orbit: { theta: -745.5, phi: 66.06, radius: 0.0399 },
   },
   {
@@ -70,8 +68,8 @@ export const hotspots = [
     description: "Ada tempat ibadah juga lo",
     detail: "Mushola menyediakan tempat ibadah bagi pengunjung selama berada di kawasan wisata. Lokasinya dapat dikenali melalui model agar lebih mudah ditemukan saat berkunjung.",
     buttonText: "8",
-    position: new THREE.Vector3(0.100121379464659, 0.667528129954249, 0.021615829335636872),
-    normal: new THREE.Vector3(0, 1, 0),
+    position: { x: 0.100121379464659, y: 0.667528129954249, z: 0.021615829335636872 },
+    normal: { x: 0, y: 1, z: 0 },
     orbit: { theta: -766.7, phi: 70.47, radius: 0.05839 },
   },
   {
@@ -79,8 +77,8 @@ export const hotspots = [
     description: "Disini dingin dan sejukk",
     detail: "Titik burung menghadirkan suasana sejuk dan elemen alam yang menjadi bagian dari pengalaman kawasan Dungkluruk. Area ini dapat diamati sambil menikmati lingkungan sekitar.",
     buttonText: "9",
-    position: new THREE.Vector3(0.06299658859323931, 0.8034024765883889, 0.2072504614438096),
-    normal: new THREE.Vector3(0.7082215039685178, 0.2298998016106447, 0.6675090879800493),
+    position: { x: 0.06299658859323931, y: 0.8034024765883889, z: 0.2072504614438096 },
+    normal: { x: 0.7082215039685178, y: 0.2298998016106447, z: 0.6675090879800493 },
     orbit: { theta: -654.8, phi: 67.19, radius: 0.356 },
   },
 ];

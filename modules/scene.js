@@ -162,24 +162,19 @@ export function createGestureIndicator(scene) {
 }
 
 export async function setupEnvironment(scene, renderer) {
-  return new Promise((resolve) => {
+  try {
     const rgbeLoader = new THREE.RGBELoader();
-    rgbeLoader.load(
-      modelConfig.environmentUrl,
-      (texture) => {
-        const pmremGenerator = new THREE.PMREMGenerator(renderer);
-        pmremGenerator.compileEquirectangularShader();
-        texture.mapping = THREE.EquirectangularReflectionMapping;
-        scene.environment = pmremGenerator.fromEquirectangular(texture).texture;
-        scene.userData.previewBackground = null;
-        texture.dispose();
-        pmremGenerator.dispose();
-        resolve();
-      },
-      undefined,
-      () => resolve()
-    );
-  });
+    const texture = await rgbeLoader.loadAsync(modelConfig.environmentUrl);
+    const pmremGenerator = new THREE.PMREMGenerator(renderer);
+    pmremGenerator.compileEquirectangularShader();
+    texture.mapping = THREE.EquirectangularReflectionMapping;
+    scene.environment = pmremGenerator.fromEquirectangular(texture).texture;
+    scene.userData.previewBackground = null;
+    texture.dispose();
+    pmremGenerator.dispose();
+  } catch {
+    // environment map is optional — silently ignore
+  }
 }
 
 export async function loadModel(statusText) {
@@ -189,24 +184,18 @@ export async function loadModel(statusText) {
   const gltfLoader = new THREE.GLTFLoader();
   gltfLoader.setDRACOLoader(dracoLoader);
 
-  return new Promise((resolve, reject) => {
-    gltfLoader.load(
-      modelConfig.glbUrl,
-      (gltf) => {
-        const modelTemplate = gltf.scene;
-        modelTemplate.traverse((child) => {
-          if (child.isMesh) child.frustumCulled = false;
-        });
-        statusText.textContent = "Model siap";
-        resolve(modelTemplate);
-      },
-      undefined,
-      (error) => {
-        statusText.textContent = "Model gagal dimuat";
-        reject(error);
-      }
-    );
-  });
+  try {
+    const gltf = await gltfLoader.loadAsync(modelConfig.glbUrl);
+    const modelTemplate = gltf.scene;
+    modelTemplate.traverse((child) => {
+      if (child.isMesh) child.frustumCulled = false;
+    });
+    statusText.textContent = "Model siap";
+    return modelTemplate;
+  } catch (error) {
+    statusText.textContent = "Model gagal dimuat";
+    throw error;
+  }
 }
 
 export function createModelInstance(modelTemplate, hotspotDefinitions = [], showHotspotMarkers = false) {
@@ -246,7 +235,7 @@ function createHotspotAnchors(coordinateSpace, hotspotDefinitions, showMarkers) 
   return hotspotDefinitions.map((hotspot, index) => {
     const anchor = new THREE.Object3D();
     anchor.name = `hotspot-anchor-${index + 1}`;
-    anchor.position.copy(hotspot.position);
+    anchor.position.set(hotspot.position.x, hotspot.position.y, hotspot.position.z);
     coordinateSpace.add(anchor);
 
     if (showMarkers) {
