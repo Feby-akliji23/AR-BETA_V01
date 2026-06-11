@@ -9,6 +9,27 @@ import type {
 
 type HotspotCallback = (index: number) => void;
 
+function applyModelViewerHotspotAnchor(
+  element: HTMLElement,
+  hotspot: HotspotConfig,
+  isDesktop: boolean
+): void {
+  const anchor = isDesktop ? hotspot.anchor.desktop : hotspot.anchor.mobile;
+  element.dataset.position = anchor.position.x + "m " + anchor.position.y + "m " + anchor.position.z + "m";
+  element.dataset.normal = anchor.normal.x + "m " + anchor.normal.y + "m " + anchor.normal.z + "m";
+}
+
+export function updateModelViewerHotspotAnchors(
+  elements: HTMLElement[],
+  hotspots: HotspotConfig[],
+  isDesktop: boolean
+): void {
+  elements.forEach((element, index) => {
+    const hotspot = hotspots[index];
+    if (hotspot) applyModelViewerHotspotAnchor(element, hotspot, isDesktop);
+  });
+}
+
 export function createHotspotElements(
   hotspots: HotspotConfig[],
   hotspotLayer: HTMLElement,
@@ -83,14 +104,14 @@ export function createModelViewerHotspotElements(
   hotspots: HotspotConfig[],
   modelViewer: ModelViewerElement,
   onSelect: HotspotCallback,
-  onDetail: HotspotCallback
+  onDetail: HotspotCallback,
+  isDesktop: boolean
 ): HTMLElement[] {
   return hotspots.map((hotspot, index) => {
     const item = document.createElement("div");
     item.className = "preview-hotspot hidden";
     item.slot = "hotspot-" + index;
-    item.dataset.position = hotspot.position.x + "m " + hotspot.position.y + "m " + hotspot.position.z + "m";
-    item.dataset.normal = hotspot.normal.x + "m " + hotspot.normal.y + "m " + hotspot.normal.z + "m";
+    applyModelViewerHotspotAnchor(item, hotspot, isDesktop);
 
     const point = document.createElement("button");
     point.className = "preview-hotspot-point";

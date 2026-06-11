@@ -12,10 +12,9 @@ import { getXrProjectionCamera, projectWorldToDom } from "./modules/math.js";
 import type {
   ArModel,
   ArPlacementState,
-  CameraOrbit,
-  CameraTarget,
   GestureControls,
   GestureIndicator,
+  HotspotConfig,
   ProjectedPoint,
   SurfaceGrid,
 } from "./modules/types.js";
@@ -39,7 +38,9 @@ import {
   setHotspotState,
   setNavDots,
   updateFocusDirection,
+  updateModelViewerHotspotAnchors,
 } from "./modules/ui.js";
+import { setupDebugPanel } from "./modules/debug.js";
 
 document.documentElement.style.setProperty("--img-dungkluruk", `url("${dungklurukUrl}")`);
 document.documentElement.style.setProperty("--img-ar-icon", `url("${arIconUrl}")`);
@@ -79,7 +80,7 @@ let supportsQuickLookAr = false;
 let hitTestRetryAfter = 0;
 let hitSampleCursor = 0;
 let hitSampleCount = 0;
-let previewCameraAnimationFrame = 0;
+let previewCameraTransitionCleanup: (() => void) | null = null;
 let arFocusRotation: {
   model: ArModel;
   from: number;
@@ -132,6 +133,7 @@ const SCAN_ADVICE = [
   { after: 12000, text: "Pastikan ruangan cukup terang, lalu gerakkan kamera kiri dan kanan." },
 ];
 const DEBUG_HOTSPOTS = new URLSearchParams(window.location.search).has("debugHotspots");
+const IS_DEBUG = new URLSearchParams(window.location.search).has("debug");
 const USE_MODEL_VIEWER_WEBXR = false; // Set to true to force using model-viewer's AR mode instead of WebXR (for testing purposes)
 
 const hotspotElements = createHotspotElements(hotspots, dom.hotspotLayer, selectHotspot, openHotspotDetail);
@@ -168,7 +170,8 @@ async function init() {
     await setupEnvironment(scene, renderer);
     modelTemplate = await loadModel(dom.statusText);
 
-    previewModel = createModelInstance(modelTemplate, hotspots, false);
+    const isDesktop = window.innerWidth >= projectConfig.preview.desktopBreakpoint;
+    previewModel = createModelInstance(modelTemplate, hotspots, false, isDesktop);
     previewModel.visible = false;
     scene.add(previewModel);
     frameObject(previewModel, controls);
@@ -177,13 +180,25 @@ async function init() {
       hotspots,
       dom.modelViewer,
       selectPreviewHotspot,
-      openHotspotDetail
+      openHotspotDetail,
+      isDesktop
     );
 
     await waitForCustomElement("model-viewer");
     dom.statusText.textContent = "Memeriksa dukungan AR";
     await setupArSupport();
     showFirstVisitGuide();
+    if (IS_DEBUG)
+      setupDebugPanel(dom.modelViewer, hotspots, {
+        prevButton: dom.prevButton,
+        nextButton: dom.nextButton,
+        buttonText: dom.buttonText,
+        navDots: dom.navDots,
+        previewHotspotElements,
+        focusCamera: (orbit, target, fieldOfView, onComplete) => {
+          setModelViewerCamera(orbit, target, true, onComplete, fieldOfView);
+        },
+      });
     hideAppLoader();
   } catch (error) {
     dom.enterArButton.disabled = true;
@@ -234,25 +249,26 @@ function applyProjectConfig() {
   dom.modelViewer.setAttribute("orientation", model.orientation.map((angle) => `${angle}deg`).join(" "));
   dom.modelViewer.setAttribute("camera-orbit", previewFrame.homeOrbit);
   dom.modelViewer.setAttribute("camera-target", previewFrame.homeTarget);
-  dom.modelViewer.setAttribute("field-of-view", previewFrame.fieldOfView);
+  dom.modelViewer.fieldOfView = previewFrame.fieldOfView;
   dom.modelViewer.setAttribute("min-field-of-view", preview.minFieldOfView);
   dom.modelViewer.setAttribute("max-field-of-view", preview.maxFieldOfView);
   dom.modelViewer.setAttribute("exposure", preview.exposure);
   dom.modelViewer.setAttribute("shadow-intensity", preview.shadowIntensity);
+  dom.modelViewer.setAttribute("interpolation-decay", String(Math.max(50, preview.cameraTransitionMs / 10)));
 }
 
 function getResponsivePreviewFrame(): {
   homeOrbit: string;
   homeTarget: string;
   fieldOfView: string;
-  hotspotOrbitRadiusScale: number;
 } {
   const { preview } = projectConfig;
   return window.innerWidth >= preview.desktopBreakpoint ? preview.desktop : preview.mobile;
 }
 
-function getResponsiveHotspotRadiusScale(): number {
-  return getResponsivePreviewFrame().hotspotOrbitRadiusScale;
+function getResponsiveHotspotCamera(hotspot: HotspotConfig) {
+  const { preview } = projectConfig;
+  return window.innerWidth >= preview.desktopBreakpoint ? hotspot.camera.desktop : hotspot.camera.mobile;
 }
 
 function waitForCustomElement(name: string, timeout = 10000): Promise<CustomElementConstructor> {
@@ -613,7 +629,7 @@ function placeModel(): void {
 function preparePlacedModel(): void {
   if (placedModel || !modelTemplate) return;
 
-  placedModel = createModelInstance(modelTemplate, hotspots, DEBUG_HOTSPOTS);
+  placedModel = createModelInstance(modelTemplate, hotspots, DEBUG_HOTSPOTS, false);
   placedModel.visible = false;
   scene.add(placedModel);
 }
@@ -970,7 +986,8 @@ function updatePreviewCardWidth(): void {
   const card = hotspot.querySelector<HTMLElement>(".preview-native-card");
   if (!point || !card) return;
   const availableWidth = Math.floor(point.getBoundingClientRect().left - 20);
-  const width = Math.max(96, Math.min(260, availableWidth));
+  const maxWidth = window.innerWidth <= 380 ? 168 : window.innerWidth <= 640 ? 196 : 260;
+  const width = Math.max(96, Math.min(maxWidth, availableWidth));
 
   card.style.width = width + "px";
   card.classList.toggle("compact", width < 190);
@@ -999,7 +1016,7 @@ function resetPreviewScene(): void {
   }
 
   const previewFrame = getResponsivePreviewFrame();
-  dom.modelViewer.setAttribute("field-of-view", previewFrame.fieldOfView);
+  dom.modelViewer.fieldOfView = previewFrame.fieldOfView;
   setModelViewerCamera(previewFrame.homeOrbit, previewFrame.homeTarget, false);
   if (!camera || !controls) return;
 
@@ -1015,18 +1032,26 @@ function focusSelectedHotspot(animate = true): void {
 
   if (currentHotspotIndex === -1) {
     const previewFrame = getResponsivePreviewFrame();
-    dom.modelViewer.setAttribute("field-of-view", previewFrame.fieldOfView);
-    setModelViewerCamera(previewFrame.homeOrbit, previewFrame.homeTarget, animate);
+    setModelViewerCamera(
+      previewFrame.homeOrbit,
+      previewFrame.homeTarget,
+      animate,
+      undefined,
+      previewFrame.fieldOfView
+    );
     return;
   }
 
-  dom.modelViewer.setAttribute("field-of-view", getResponsivePreviewFrame().fieldOfView);
   const hotspot = hotspots[currentHotspotIndex];
   if (!hotspot) return;
-  const target = hotspot.position.x + "m " + hotspot.position.y + "m " + hotspot.position.z + "m";
-  const radius = hotspot.orbit.radius * getResponsiveHotspotRadiusScale();
-  const orbit = hotspot.orbit.theta + "deg " + hotspot.orbit.phi + "deg " + radius + "m";
-  setModelViewerCamera(orbit, target, animate);
+  const recordedCamera = getResponsiveHotspotCamera(hotspot);
+  setModelViewerCamera(
+    recordedCamera.orbit,
+    recordedCamera.target,
+    animate,
+    undefined,
+    recordedCamera.fieldOfView
+  );
 }
 
 function focusSelectedArHotspot(): void {
@@ -1087,89 +1112,75 @@ function updateArFocusRotation(timestamp: number): void {
   if (progress >= 1) arFocusRotation = null;
 }
 
-function setModelViewerCamera(orbit: string, target: string, animate = true): void {
+function setModelViewerCamera(
+  orbit: string,
+  target: string,
+  animate = true,
+  onComplete?: () => void,
+  fieldOfView?: string
+): void {
   if (!dom.modelViewer) return;
   if (!animate || typeof dom.modelViewer.getCameraOrbit !== "function") {
     cancelPreviewCameraAnimation(false);
-    dom.modelViewer.setAttribute("camera-orbit", orbit);
-    dom.modelViewer.setAttribute("camera-target", target);
-    revealSelectedPreviewHotspot();
+    dom.modelViewer.cameraOrbit = orbit;
+    dom.modelViewer.cameraTarget = target;
+    if (fieldOfView) dom.modelViewer.fieldOfView = fieldOfView;
+    dom.modelViewer.jumpCameraToGoal?.();
+    if (onComplete) onComplete();
+    else revealSelectedPreviewHotspot();
     return;
   }
 
-  animateModelViewerCamera(orbit, target);
+  animateModelViewerCamera(orbit, target, onComplete, fieldOfView);
 }
 
-function animateModelViewerCamera(orbit: string, target: string): void {
+function animateModelViewerCamera(
+  orbit: string,
+  target: string,
+  onComplete?: () => void,
+  fieldOfView?: string
+): void {
   cancelPreviewCameraAnimation(false);
 
-  const getCameraOrbit = dom.modelViewer.getCameraOrbit;
-  const getCameraTarget = dom.modelViewer.getCameraTarget;
-  const jumpMethod = dom.modelViewer.jumpCameraToGoal;
-  if (!getCameraOrbit || !getCameraTarget || !jumpMethod) {
-    dom.modelViewer.setAttribute("camera-orbit", orbit);
-    dom.modelViewer.setAttribute("camera-target", target);
-    revealSelectedPreviewHotspot();
-    return;
-  }
-  const jumpCameraToGoal = (): void => jumpMethod.call(dom.modelViewer);
-  const fromOrbit = getCameraOrbit.call(dom.modelViewer);
-  const fromTarget = getCameraTarget.call(dom.modelViewer);
-  const toOrbit = parseOrbit(orbit);
-  const toTarget = parseTarget(target);
-  const thetaDelta = shortestAngle(toOrbit.theta - fromOrbit.theta);
-  const startedAt = performance.now();
-  const duration = projectConfig.preview.cameraTransitionMs;
+  let settleTimeout = 0;
+  let fallbackTimeout = 0;
+  let completed = false;
 
-  function update(time: number): void {
-    const progress = Math.min((time - startedAt) / duration, 1);
-    const eased = smootherStep(progress);
-    const theta = fromOrbit.theta + thetaDelta * eased;
-    const phi = THREE.MathUtils.lerp(fromOrbit.phi, toOrbit.phi, eased);
-    const radius = THREE.MathUtils.lerp(fromOrbit.radius, toOrbit.radius, eased);
-    const x = THREE.MathUtils.lerp(fromTarget.x, toTarget.x, eased);
-    const y = THREE.MathUtils.lerp(fromTarget.y, toTarget.y, eased);
-    const z = THREE.MathUtils.lerp(fromTarget.z, toTarget.z, eased);
+  const cleanup = (): void => {
+    window.clearTimeout(settleTimeout);
+    window.clearTimeout(fallbackTimeout);
+    dom.modelViewer.removeEventListener("camera-change", onCameraChange);
+    if (previewCameraTransitionCleanup === cleanup) previewCameraTransitionCleanup = null;
+  };
+  const complete = (): void => {
+    if (completed) return;
+    completed = true;
+    cleanup();
+    if (onComplete) onComplete();
+    else revealSelectedPreviewHotspot();
+  };
+  const onCameraChange = (): void => {
+    window.clearTimeout(settleTimeout);
+    settleTimeout = window.setTimeout(complete, 100);
+  };
 
-    dom.modelViewer.cameraOrbit = `${theta}rad ${phi}rad ${radius}m`;
-    dom.modelViewer.cameraTarget = `${x}m ${y}m ${z}m`;
-    jumpCameraToGoal();
+  previewCameraTransitionCleanup = cleanup;
+  dom.modelViewer.addEventListener("camera-change", onCameraChange);
+  settleTimeout = window.setTimeout(complete, 180);
+  fallbackTimeout = window.setTimeout(
+    complete,
+    Math.max(500, projectConfig.preview.cameraTransitionMs * 0.65)
+  );
 
-    if (progress < 1) {
-      previewCameraAnimationFrame = requestAnimationFrame(update);
-    } else {
-      previewCameraAnimationFrame = 0;
-      revealSelectedPreviewHotspot();
-    }
-  }
-
-  previewCameraAnimationFrame = requestAnimationFrame(update);
+  dom.modelViewer.cameraOrbit = orbit;
+  dom.modelViewer.cameraTarget = target;
+  if (fieldOfView) dom.modelViewer.fieldOfView = fieldOfView;
 }
 
 function cancelPreviewCameraAnimation(revealHotspot: boolean): void {
-  if (previewCameraAnimationFrame) {
-    cancelAnimationFrame(previewCameraAnimationFrame);
-    previewCameraAnimationFrame = 0;
-  }
+  previewCameraTransitionCleanup?.();
+  previewCameraTransitionCleanup = null;
   if (revealHotspot) revealSelectedPreviewHotspot();
-}
-
-function parseOrbit(value: string): CameraOrbit {
-  const [theta, phi, radius] = value.split(/\s+/);
-  if (!theta || !phi || !radius) throw new Error(`Orbit kamera tidak valid: ${value}`);
-  return {
-    theta: THREE.MathUtils.degToRad(Number.parseFloat(theta)),
-    phi: THREE.MathUtils.degToRad(Number.parseFloat(phi)),
-    radius: Number.parseFloat(radius),
-  };
-}
-
-function parseTarget(value: string): CameraTarget {
-  const [x, y, z] = value.split(/\s+/).map(Number.parseFloat);
-  if (x === undefined || y === undefined || z === undefined) {
-    throw new Error(`Target kamera tidak valid: ${value}`);
-  }
-  return { x, y, z };
 }
 
 function shortestAngle(angle: number): number {
@@ -1205,9 +1216,22 @@ function onResize(): void {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
+  updateModelViewerHotspotAnchors(
+    previewHotspotElements,
+    hotspots,
+    window.innerWidth >= projectConfig.preview.desktopBreakpoint
+  );
+
+  // Mobile browser chrome frequently changes the viewport height while scrolling.
+  // Preserve the manually recorded camera in debug mode instead of resetting it.
+  if (IS_DEBUG && !isInAR) {
+    requestAnimationFrame(updatePreviewCardWidth);
+    return;
+  }
+
   if (!isInAR && currentHotspotIndex === -1) {
     const previewFrame = getResponsivePreviewFrame();
-    dom.modelViewer.setAttribute("field-of-view", previewFrame.fieldOfView);
+    dom.modelViewer.fieldOfView = previewFrame.fieldOfView;
     setModelViewerCamera(previewFrame.homeOrbit, previewFrame.homeTarget, false);
   } else if (!isInAR) {
     focusSelectedHotspot(false);

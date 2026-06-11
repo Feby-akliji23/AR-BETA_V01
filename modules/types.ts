@@ -4,10 +4,15 @@ export interface Vector3Config {
   z: number;
 }
 
-export interface OrbitConfig {
-  theta: number;
-  phi: number;
-  radius: number;
+export interface HotspotCameraConfig {
+  orbit: string;
+  target: string;
+  fieldOfView: string;
+}
+
+export interface HotspotAnchorConfig {
+  position: Vector3Config;
+  normal: Vector3Config;
 }
 
 export interface HotspotConfig {
@@ -16,9 +21,14 @@ export interface HotspotConfig {
   detail?: string;
   buttonText: string;
   imageUrl?: string;
-  position: Vector3Config;
-  normal: Vector3Config;
-  orbit: OrbitConfig;
+  anchor: {
+    mobile: HotspotAnchorConfig;
+    desktop: HotspotAnchorConfig;
+  };
+  camera: {
+    mobile: HotspotCameraConfig;
+    desktop: HotspotCameraConfig;
+  };
 }
 
 export type ArPlacementState = "preview" | "loading" | "scanning" | "stabilizing" | "ready" | "placed";
@@ -53,13 +63,11 @@ export interface ProjectConfig {
       homeOrbit: string;
       homeTarget: string;
       fieldOfView: string;
-      hotspotOrbitRadiusScale: number;
     };
     desktop: {
       homeOrbit: string;
       homeTarget: string;
       fieldOfView: string;
-      hotspotOrbitRadiusScale: number;
     };
     minFieldOfView: string;
     maxFieldOfView: string;
@@ -74,8 +82,12 @@ export interface ModelViewerElement extends HTMLElement {
   activateAR?: () => Promise<void>;
   cameraOrbit?: string;
   cameraTarget?: string;
+  fieldOfView?: string;
+  interpolationDecay?: number;
   getCameraOrbit?: () => { theta: number; phi: number; radius: number };
   getCameraTarget?: () => { x: number; y: number; z: number };
+  getFieldOfView?: () => number;
+  getIdealAspect?: () => number;
   jumpCameraToGoal?: () => void;
 }
 
@@ -132,18 +144,6 @@ export interface ArPlacementDependencies {
   hideGestureHint: () => void;
   hideFocusDirection: () => void;
   interactionToolbar: HTMLElement;
-}
-
-export interface CameraOrbit {
-  theta: number;
-  phi: number;
-  radius: number;
-}
-
-export interface CameraTarget {
-  x: number;
-  y: number;
-  z: number;
 }
 
 export interface DragGesture {

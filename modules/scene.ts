@@ -205,7 +205,8 @@ export async function loadModel(statusText: HTMLElement): Promise<Group> {
 export function createModelInstance(
   modelTemplate: Group,
   hotspotDefinitions: HotspotConfig[] = [],
-  showHotspotMarkers = false
+  showHotspotMarkers = false,
+  isDesktop = false
 ): ArModel {
   const root = new THREE.Group() as ArModel;
   const coordinateSpace = new THREE.Group();
@@ -223,7 +224,12 @@ export function createModelInstance(
   coordinateSpace.position.set(-center.x, -box.min.y, -center.z);
 
   root.userData.coordinateAnchor = coordinateSpace;
-  root.userData.hotspotAnchors = createHotspotAnchors(modelSpace, hotspotDefinitions, showHotspotMarkers);
+  root.userData.hotspotAnchors = createHotspotAnchors(
+    modelSpace,
+    hotspotDefinitions,
+    showHotspotMarkers,
+    isDesktop
+  );
   root.updateMatrixWorld(true);
   root.userData.baseScale = modelConfig.scale;
   root.userData.interactionPlaneY =
@@ -235,7 +241,8 @@ export function createModelInstance(
 function createHotspotAnchors(
   modelSpace: Group,
   hotspotDefinitions: HotspotConfig[],
-  showMarkers: boolean
+  showMarkers: boolean,
+  isDesktop: boolean
 ): Object3D[] {
   const markerGeometry = showMarkers ? new THREE.SphereGeometry(0.012, 12, 12) : null;
   const markerMaterial = showMarkers
@@ -247,9 +254,10 @@ function createHotspotAnchors(
     : null;
 
   return hotspotDefinitions.map((hotspot, index) => {
+    const anchorConfig = isDesktop ? hotspot.anchor.desktop : hotspot.anchor.mobile;
     const anchor = new THREE.Object3D();
     anchor.name = `hotspot-anchor-${index + 1}`;
-    anchor.position.set(hotspot.position.x, hotspot.position.y, hotspot.position.z);
+    anchor.position.set(anchorConfig.position.x, anchorConfig.position.y, anchorConfig.position.z);
     modelSpace.add(anchor);
 
     if (markerGeometry && markerMaterial) {

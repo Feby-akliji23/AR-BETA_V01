@@ -1,18 +1,30 @@
 #info-sheet {
   position: fixed;
   left: 50%;
-  bottom: 0;
+  bottom: 8px;
   z-index: 36;
-  width: min(390px, 100vw);
-  max-height: min(82vh, 720px);
+  width: min(390px, calc(100vw - 16px));
+  max-height: min(82vh, calc(100dvh - 88px));
   overflow-y: auto;
   transform: translateX(-50%);
-  border-radius: 18px 18px 0 0;
-  padding: 10px 16px 18px;
+  border: 1px solid rgba(82, 74, 60, 0.12);
+  border-radius: 20px;
+  padding: 10px 14px 16px;
   color: #111827;
   background: rgba(255, 252, 244, 0.97);
-  box-shadow: 0 -16px 36px rgba(15, 23, 42, 0.18);
+  box-shadow: 0 20px 60px rgba(15, 23, 42, 0.24);
+  scrollbar-color: rgba(82, 74, 60, 0.32) transparent;
+  scrollbar-width: thin;
   pointer-events: auto;
+}
+
+#info-sheet::-webkit-scrollbar {
+  width: 6px;
+}
+
+#info-sheet::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(82, 74, 60, 0.32);
 }
 
 .sheet-content {
