@@ -63,6 +63,13 @@ let surfaceGrid: SurfaceGrid;
 let gestureIndicator: GestureIndicator;
 let gestureControls: GestureControls;
 let hitTestSource: XRHitTestSource | null = null;
+let placedModelAnchor: XRAnchor | null = null;
+let hasPlacedModelAnchorPose = false;
+let shouldCreatePlacedModelAnchor = false;
+let isCreatingPlacedModelAnchor = false;
+let placedModelAnchorRequestVersion = 0;
+let anchorTrackingLostSince = 0;
+let isModelHiddenForAnchorTracking = false;
 let hitTestSourceRequested = false;
 let currentHotspotIndex = -1;
 let isInAR = false;
@@ -101,6 +108,7 @@ const HIT_STABLE_DURATION = 180;
 const HIT_UNSTABLE_GRACE = 1200;
 const HIT_LOST_GRACE = 700;
 const HIT_SMOOTHING = 0.22;
+const ANCHOR_TRACKING_LOST_GRACE = 500;
 const CARD_HIDE_MODEL_SCALE = 0.82;
 const CARD_SHOW_MODEL_SCALE = 0.9;
 const AR_FOCUS_ROTATION_DURATION = 1100;
@@ -114,6 +122,11 @@ const hitQuaternionScratch = new THREE.Quaternion();
 const smoothedHitMatrix = new THREE.Matrix4();
 const hitCenterScratch = new THREE.Vector3();
 const lastHitMatrixValue = new THREE.Matrix4();
+const anchorMatrix = new THREE.Matrix4();
+const previousAnchorMatrix = new THREE.Matrix4();
+const inversePreviousAnchorMatrix = new THREE.Matrix4();
+const anchorDeltaMatrix = new THREE.Matrix4();
+const anchoredModelMatrix = new THREE.Matrix4();
 const hotspotWorldPositionScratch = new THREE.Vector3();
 const modelWorldPositionScratch = new THREE.Vector3();
 const cameraWorldPositionScratch = new THREE.Vector3();
@@ -548,7 +561,7 @@ async function startAr() {
 
     session = await xr.requestSession("immersive-ar", {
       requiredFeatures: ["hit-test", "dom-overlay"],
-      optionalFeatures: ["local-floor"],
+      optionalFeatures: ["local-floor", "anchors"],
       domOverlay: { root: document.body },
     });
 
@@ -618,6 +631,7 @@ function placeModel(): void {
   if (performance.now() < suppressPlacementUntil) return;
   if (arPlacementState === "placed" || !lastHitMatrix || !modelTemplate) return;
 
+  clearPlacedModelAnchor();
   preparePlacedModel();
   const model = placedModel;
   if (!model) return;
@@ -631,6 +645,7 @@ function placeModel(): void {
 
   setArPlacementState("placed");
   dom.statusText.textContent = "Model ditempatkan";
+  shouldCreatePlacedModelAnchor = true;
 }
 
 function preparePlacedModel(): void {
@@ -644,6 +659,7 @@ function preparePlacedModel(): void {
 function searchAnotherPlace(): void {
   if (!isInAR) return;
 
+  clearPlacedModelAnchor();
   suppressPlacementUntil = performance.now() + 700;
   resetHitStability();
   gestureControls.clear();
@@ -665,6 +681,7 @@ function onArEnded(): void {
   dom.menuBackdrop.classList.add("hidden");
   dom.infoSheet.classList.add("hidden");
   clearHitTestSource();
+  clearPlacedModelAnchor();
   resetHitStability();
   gestureControls.disconnect();
   arFocusRotation = null;
@@ -687,6 +704,17 @@ function clearHitTestSource(): void {
   hitTestSourceRequested = false;
   hitTestSource = null;
   hitTestRetryAfter = 0;
+}
+
+function clearPlacedModelAnchor(): void {
+  if (placedModelAnchor) placedModelAnchor.delete();
+  placedModelAnchor = null;
+  hasPlacedModelAnchorPose = false;
+  shouldCreatePlacedModelAnchor = false;
+  isCreatingPlacedModelAnchor = false;
+  placedModelAnchorRequestVersion += 1;
+  anchorTrackingLostSince = 0;
+  isModelHiddenForAnchorTracking = false;
 }
 
 function setArPlacementState(state: ArPlacementState): void {
@@ -720,6 +748,10 @@ function render(timestamp: number, frame?: XRFrame): void {
 
   const session = renderer.xr.getSession();
   if (session && frame && arPlacementState !== "placed") updateHitTest(frame);
+  if (frame && arPlacementState === "placed") {
+    createPlacedModelAnchor(frame);
+    updatePlacedModelAnchor(frame);
+  }
   updateScanGuidance();
   updateArFocusRotation(timestamp);
 
@@ -778,6 +810,111 @@ function updateHitTest(frame: XRFrame): void {
     resetHitStability();
     if ((!placedModel || !placedModel.visible) && arPlacementState !== "scanning")
       setArPlacementState("scanning");
+  }
+}
+
+function createPlacedModelAnchor(frame: XRFrame): void {
+  if (
+    !shouldCreatePlacedModelAnchor ||
+    isCreatingPlacedModelAnchor ||
+    placedModelAnchor ||
+    !placedModel?.visible ||
+    !frame.createAnchor
+  ) {
+    return;
+  }
+
+  const referenceSpace = renderer.xr.getReferenceSpace();
+  if (!referenceSpace) return;
+
+  const pose = new XRRigidTransform(
+    {
+      x: placedModel.position.x,
+      y: placedModel.position.y,
+      z: placedModel.position.z,
+    },
+    {
+      x: placedModel.quaternion.x,
+      y: placedModel.quaternion.y,
+      z: placedModel.quaternion.z,
+      w: placedModel.quaternion.w,
+    }
+  );
+
+  shouldCreatePlacedModelAnchor = false;
+  isCreatingPlacedModelAnchor = true;
+  const requestVersion = placedModelAnchorRequestVersion;
+  frame
+    .createAnchor(pose, referenceSpace)
+    .then((anchor) => {
+      if (requestVersion !== placedModelAnchorRequestVersion) {
+        anchor.delete();
+        return;
+      }
+      isCreatingPlacedModelAnchor = false;
+      if (!isInAR || arPlacementState !== "placed" || placedModelAnchor) {
+        anchor.delete();
+        return;
+      }
+      placedModelAnchor = anchor;
+      hasPlacedModelAnchorPose = false;
+      dom.statusText.textContent = "Model ditempatkan dengan anchor";
+    })
+    .catch((error) => {
+      if (requestVersion !== placedModelAnchorRequestVersion) return;
+      isCreatingPlacedModelAnchor = false;
+      console.warn("Anchor AR tidak tersedia; menggunakan posisi lokal", error);
+    });
+}
+
+function updatePlacedModelAnchor(frame: XRFrame): void {
+  if (!placedModelAnchor || !placedModel) return;
+  const referenceSpace = renderer.xr.getReferenceSpace();
+  if (!referenceSpace) return;
+
+  const pose = frame.getPose(placedModelAnchor.anchorSpace, referenceSpace);
+  if (!pose || pose.emulatedPosition) {
+    if (!anchorTrackingLostSince) anchorTrackingLostSince = performance.now();
+    if (
+      !isModelHiddenForAnchorTracking &&
+      performance.now() - anchorTrackingLostSince >= ANCHOR_TRACKING_LOST_GRACE
+    ) {
+      placedModel.visible = false;
+      isModelHiddenForAnchorTracking = true;
+      dom.statusText.textContent = "Tracking hilang, arahkan kamera ke lingkungan sekitar";
+      gestureHint.show("Tracking hilang · arahkan kamera ke lantai atau lingkungan bertekstur");
+    }
+    return;
+  }
+
+  anchorMatrix.fromArray(pose.transform.matrix);
+  anchorTrackingLostSince = 0;
+  if (!hasPlacedModelAnchorPose) {
+    previousAnchorMatrix.copy(anchorMatrix);
+    hasPlacedModelAnchorPose = true;
+    if (isModelHiddenForAnchorTracking) {
+      placedModel.visible = true;
+      isModelHiddenForAnchorTracking = false;
+      dom.statusText.textContent = "Tracking pulih";
+      gestureHint.show("Tracking pulih");
+      gestureHint.hideSoon();
+    }
+    return;
+  }
+
+  placedModel.updateMatrix();
+  inversePreviousAnchorMatrix.copy(previousAnchorMatrix).invert();
+  anchorDeltaMatrix.copy(anchorMatrix).multiply(inversePreviousAnchorMatrix);
+  anchoredModelMatrix.copy(anchorDeltaMatrix).multiply(placedModel.matrix);
+  anchoredModelMatrix.decompose(placedModel.position, placedModel.quaternion, placedModel.scale);
+  placedModel.updateMatrixWorld(true);
+  previousAnchorMatrix.copy(anchorMatrix);
+  if (isModelHiddenForAnchorTracking) {
+    placedModel.visible = true;
+    isModelHiddenForAnchorTracking = false;
+    dom.statusText.textContent = "Tracking pulih";
+    gestureHint.show("Tracking pulih");
+    gestureHint.hideSoon();
   }
 }
 
