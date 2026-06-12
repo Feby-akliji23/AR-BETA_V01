@@ -40,7 +40,7 @@ const hotspotDefinitions: Omit<HotspotConfig, "buttonText">[] = [
     anchor: {
       mobile: {
         position: { x: 1.663837, y: 22.463406, z: 0.771796 },
-        normal: { x: -0.794457, y: 0.607311, z: -0.003410 },
+        normal: { x: -0.794457, y: 0.607311, z: -0.00341 },
       },
       desktop: {
         position: { x: 1.547442, y: 22.309502, z: 0.479575 },
@@ -96,7 +96,7 @@ const hotspotDefinitions: Omit<HotspotConfig, "buttonText">[] = [
     anchor: {
       mobile: {
         position: { x: 1.702419, y: 20.559653, z: 8.569369 },
-        normal: { x: -0.837610, y: 0.000000, z: 0.546269 },
+        normal: { x: -0.83761, y: 0.0, z: 0.546269 },
       },
       desktop: {
         position: { x: 1.54325, y: 20.510018, z: 8.567543 },
@@ -124,7 +124,7 @@ const hotspotDefinitions: Omit<HotspotConfig, "buttonText">[] = [
     anchor: {
       mobile: {
         position: { x: -0.084654, y: 21.950637, z: -2.575135 },
-        normal: { x: 0.288150, y: 0.000000, z: 0.957585 },
+        normal: { x: 0.28815, y: 0.0, z: 0.957585 },
       },
       desktop: {
         position: { x: -0.229379, y: 21.984686, z: -2.531585 },
@@ -152,7 +152,7 @@ const hotspotDefinitions: Omit<HotspotConfig, "buttonText">[] = [
     anchor: {
       mobile: {
         position: { x: -6.341875, y: 19.780554, z: 0.054555 },
-        normal: { x: 0.000000, y: 1.000000, z: 0.000000 },
+        normal: { x: 0.0, y: 1.0, z: 0.0 },
       },
       desktop: {
         position: { x: -6.179244, y: 19.780554, z: -0.379421 },
@@ -179,7 +179,7 @@ const hotspotDefinitions: Omit<HotspotConfig, "buttonText">[] = [
       "Kalipasang merupakan area yang dikelilingi pepohonan pinus. Suasananya teduh dan cocok untuk menikmati udara segar serta mengenali karakter alam kawasan Dungkluruk.",
     anchor: {
       mobile: {
-        position: { x: 6.487370, y: 23.284890, z: 7.446827 },
+        position: { x: 6.48737, y: 23.28489, z: 7.446827 },
         normal: { x: 0.507746, y: 0.383248, z: 0.771566 },
       },
       desktop: {
@@ -235,7 +235,7 @@ const hotspotDefinitions: Omit<HotspotConfig, "buttonText">[] = [
       "Musholla menyediakan tempat ibadah bagi pengunjung selama berada di kawasan wisata. Lokasinya dapat dikenali melalui model agar lebih mudah ditemukan saat berkunjung.",
     anchor: {
       mobile: {
-        position: { x: 2.171349, y: 22.238032, z: -1.325900 },
+        position: { x: 2.171349, y: 22.238032, z: -1.3259 },
         normal: { x: -0.707307, y: 0.0, z: 0.706907 },
       },
       desktop: {

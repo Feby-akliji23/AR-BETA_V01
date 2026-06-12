@@ -1,9 +1,6 @@
 import "@google/model-viewer";
 import type { Group, Matrix4, Mesh, PerspectiveCamera, Scene, WebGLRenderer } from "three";
 import type { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
-import dungklurukUrl from "./assets/dungkluruk.webp";
-import arIconUrl from "./assets/ar_icon.png";
-import allArLogoUrl from "./assets/logo all ar.svg";
 import { THREE } from "./modules/three.js";
 import { projectConfig } from "./modules/config.js";
 import { getDom } from "./modules/dom.js";
@@ -41,6 +38,10 @@ import {
   updateModelViewerHotspotAnchors,
 } from "./modules/ui.js";
 import { setupDebugPanel } from "./modules/debug.js";
+
+const dungklurukUrl = "./assets/dungkluruk.webp";
+const arIconUrl = "./assets/ar_icon.png";
+const allArLogoUrl = "./assets/logo%20all%20ar.svg";
 
 document.documentElement.style.setProperty("--img-dungkluruk", `url("${dungklurukUrl}")`);
 document.documentElement.style.setProperty("--img-ar-icon", `url("${arIconUrl}")`);
@@ -242,7 +243,8 @@ function applyProjectConfig() {
   dom.hotspotCount.textContent = String(hotspots.length);
 
   dom.modelViewer.setAttribute("src", model.glbUrl);
-  dom.modelViewer.setAttribute("ios-src", model.usdzUrl);
+  if (model.usdzUrl) dom.modelViewer.setAttribute("ios-src", model.usdzUrl);
+  else dom.modelViewer.removeAttribute("ios-src");
   dom.modelViewer.setAttribute("alt", model.alt);
   dom.modelViewer.setAttribute("skybox-image", model.environmentUrl);
   dom.modelViewer.setAttribute("scale", previewScale);
@@ -254,7 +256,7 @@ function applyProjectConfig() {
   dom.modelViewer.setAttribute("max-field-of-view", preview.maxFieldOfView);
   dom.modelViewer.setAttribute("exposure", preview.exposure);
   dom.modelViewer.setAttribute("shadow-intensity", preview.shadowIntensity);
-  dom.modelViewer.setAttribute("interpolation-decay", String(Math.max(50, preview.cameraTransitionMs / 10)));
+  dom.modelViewer.setAttribute("interpolation-decay", "100");
 }
 
 function getResponsivePreviewFrame(): {
@@ -594,7 +596,12 @@ function isQuickLookSupported(): boolean {
   const isSafari =
     /Safari/.test(navigator.userAgent) && !/CriOS|FxiOS|EdgiOS|OPiOS|DuckDuckGo/.test(navigator.userAgent);
 
-  return isIosDevice && isSafari && typeof dom.modelViewer.activateAR === "function";
+  return (
+    isIosDevice &&
+    isSafari &&
+    Boolean(projectConfig.model.usdzUrl) &&
+    typeof dom.modelViewer.activateAR === "function"
+  );
 }
 
 function showAllModelViewerHotspots(): void {
@@ -1167,10 +1174,7 @@ function animateModelViewerCamera(
   previewCameraTransitionCleanup = cleanup;
   dom.modelViewer.addEventListener("camera-change", onCameraChange);
   settleTimeout = window.setTimeout(complete, 180);
-  fallbackTimeout = window.setTimeout(
-    complete,
-    Math.max(500, projectConfig.preview.cameraTransitionMs * 0.65)
-  );
+  fallbackTimeout = window.setTimeout(complete, 520);
 
   dom.modelViewer.cameraOrbit = orbit;
   dom.modelViewer.cameraTarget = target;
