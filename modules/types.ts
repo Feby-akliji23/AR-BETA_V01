@@ -93,6 +93,7 @@ export interface ModelViewerElement extends HTMLElement {
 
 export interface ArModel extends Group {
   userData: {
+    interactionRoot: Group;
     coordinateAnchor: Group;
     hotspotAnchors: Object3D[];
     baseScale: number;

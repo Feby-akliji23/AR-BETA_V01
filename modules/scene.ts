@@ -28,17 +28,20 @@ export function createThreeScene(canvas: HTMLCanvasElement) {
   controls.minDistance = 0.5;
   controls.maxDistance = 4;
 
-  addLights(scene);
+  const lights = addLights(scene);
 
-  return { scene, camera, renderer, controls };
+  return { scene, camera, renderer, controls, ...lights };
 }
 
-export function addLights(scene: Scene): void {
-  scene.add(new THREE.HemisphereLight(0xffffff, 0x8c97a3, 1.1));
+export function addLights(scene: Scene) {
+  const hemisphereLight = new THREE.HemisphereLight(0xffffff, 0x8c97a3, 1.1);
+  scene.add(hemisphereLight);
 
-  const directional = new THREE.DirectionalLight(0xffffff, 3.2);
-  directional.position.set(3, 5, 2);
-  scene.add(directional);
+  const directionalLight = new THREE.DirectionalLight(0xffffff, 3.2);
+  directionalLight.position.set(3, 5, 2);
+  scene.add(directionalLight, directionalLight.target);
+
+  return { hemisphereLight, directionalLight };
 }
 
 export function createReticle(scene: Scene) {
@@ -53,9 +56,10 @@ export function createReticle(scene: Scene) {
 }
 
 export function createSurfaceGrid(scene: Scene): SurfaceGrid {
+  const gridSize = 1;
   const group = new THREE.Group() as SurfaceGrid;
   const surface = new THREE.Mesh(
-    new THREE.PlaneGeometry(1.6, 1.6).rotateX(-Math.PI / 2),
+    new THREE.PlaneGeometry(gridSize, gridSize).rotateX(-Math.PI / 2),
     new THREE.MeshBasicMaterial({
       color: 0x4ade80,
       transparent: true,
@@ -64,10 +68,10 @@ export function createSurfaceGrid(scene: Scene): SurfaceGrid {
       side: THREE.DoubleSide,
     })
   );
-  const grid = new THREE.GridHelper(1.6, 16, 0x86efac, 0x22c55e);
+  const grid = new THREE.GridHelper(gridSize, 10, 0x86efac, 0x22c55e);
 
   grid.material.transparent = true;
-  grid.material.opacity = 0.42;
+  grid.material.opacity = 0.28;
   grid.material.depthWrite = false;
   grid.position.y = 0.002;
   group.add(surface, grid);
@@ -118,21 +122,22 @@ export function createGestureIndicator(scene: Scene): GestureIndicator {
 
   function sync(model: ArModel, type: Exclude<GestureType, "pending-model">): void {
     model.updateMatrixWorld(true);
+    const interactionRoot = model.userData.interactionRoot;
     const bounds = model.userData.localBounds;
     const localCenter = bounds ? bounds.getCenter(new THREE.Vector3()) : new THREE.Vector3();
-    const center = localCenter.clone().applyMatrix4(model.matrixWorld);
+    const center = localCenter.clone().applyMatrix4(interactionRoot.matrixWorld);
     const size = bounds
-      ? bounds.getSize(new THREE.Vector3()).multiply(model.scale)
+      ? bounds.getSize(new THREE.Vector3()).multiply(interactionRoot.scale)
       : new THREE.Vector3(0.6, 0.6, 0.6);
     const radius = Math.max(size.x, size.z) * 0.58;
     const interactionPlane = new THREE.Vector3(
       localCenter.x,
       model.userData.interactionPlaneY ?? localCenter.y,
       localCenter.z
-    ).applyMatrix4(model.matrixWorld);
+    ).applyMatrix4(interactionRoot.matrixWorld);
 
-    group.position.set(center.x, interactionPlane.y - 0.008 * model.scale.y, center.z);
-    group.rotation.y = type === "rotate" ? model.rotation.y : 0;
+    group.position.set(center.x, interactionPlane.y - 0.008 * interactionRoot.scale.y, center.z);
+    group.rotation.y = type === "rotate" ? interactionRoot.rotation.y : 0;
     group.scale.setScalar(Math.max(0.16, radius));
   }
 
@@ -209,6 +214,7 @@ export function createModelInstance(
   isDesktop = false
 ): ArModel {
   const root = new THREE.Group() as ArModel;
+  const interactionRoot = new THREE.Group();
   const coordinateSpace = new THREE.Group();
   const modelSpace = new THREE.Group();
   const model = modelTemplate.clone(true);
@@ -217,12 +223,14 @@ export function createModelInstance(
   modelSpace.quaternion.setFromEuler(new THREE.Euler(pitch, yaw, roll, "YXZ"));
   modelSpace.add(model);
   coordinateSpace.add(modelSpace);
-  root.add(coordinateSpace);
+  interactionRoot.add(coordinateSpace);
+  root.add(interactionRoot);
 
   const box = new THREE.Box3().setFromObject(modelSpace);
   const center = box.getCenter(new THREE.Vector3());
   coordinateSpace.position.set(-center.x, -box.min.y, -center.z);
 
+  root.userData.interactionRoot = interactionRoot;
   root.userData.coordinateAnchor = coordinateSpace;
   root.userData.hotspotAnchors = createHotspotAnchors(
     modelSpace,
@@ -234,7 +242,7 @@ export function createModelInstance(
   root.userData.baseScale = modelConfig.scale;
   root.userData.interactionPlaneY =
     coordinateSpace.position.y + modelConfig.interactionPlaneY * modelConfig.scale;
-  root.userData.localBounds = new THREE.Box3().setFromObject(root);
+  root.userData.localBounds = new THREE.Box3().setFromObject(interactionRoot);
   return root;
 }
 

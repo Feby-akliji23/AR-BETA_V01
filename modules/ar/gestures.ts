@@ -1,15 +1,15 @@
-import { THREE } from "./three.js";
-import { clamp, getTouchDistance, getXrProjectionCamera } from "./math.js";
+import { THREE } from "../three.js";
+import { clamp, getTouchDistance, getXrProjectionCamera } from "../math.js";
 import type { Vector3 } from "three";
-import type { ArGestureOptions, ArModel, GestureState, GestureType } from "./types.js";
+import type { ArGestureOptions, ArModel, GestureState, GestureType } from "../types.js";
 
-const HOLD_DURATION = 500;
+const HOLD_DURATION = 400;
 const MOVE_THRESHOLD = 18;
 const ROTATE_SENSITIVITY = 0.009;
-const DRAG_SENSITIVITY = 0.42;
-const DRAG_LERP = 0.38;
+const DRAG_SENSITIVITY = 0.72;
+const DRAG_LERP = 0.58;
 const MIN_DRAG_STEP = 0.008;
-const MAX_DRAG_STEP = 0.035;
+const MAX_DRAG_STEP = 0.045;
 const MIN_SCALE = 0.65;
 const MAX_SCALE = 1.8;
 
@@ -26,6 +26,8 @@ export function setupArGestures(options: ArGestureOptions) {
   const pointer = new THREE.Vector2();
   const planePoint = new THREE.Vector3();
   const dragDelta = new THREE.Vector3();
+  const interactionWorldPosition = new THREE.Vector3();
+  const nextInteractionWorldPosition = new THREE.Vector3();
 
   function isUiTarget(event: Event): boolean {
     const selector =
@@ -74,14 +76,16 @@ export function setupArGestures(options: ArGestureOptions) {
 
   function beginDrag(touch: Touch, placedModel: ArModel): boolean {
     clearHoldTimer();
+    const interactionRoot = placedModel.userData.interactionRoot;
+    interactionRoot.getWorldPosition(interactionWorldPosition);
     const startIntersection = new THREE.Vector3();
-    if (!getFloorIntersection(touch, placedModel.position.y, startIntersection)) return false;
+    if (!getFloorIntersection(touch, interactionWorldPosition.y, startIntersection)) return false;
 
     state.gesture = {
       type: "drag",
-      floorY: placedModel.position.y,
+      floorY: interactionWorldPosition.y,
       lastIntersection: startIntersection,
-      targetPosition: placedModel.position.clone(),
+      targetPosition: interactionWorldPosition.clone(),
     };
     setGestureUi("drag");
     options.indicator.show("drag", placedModel);
@@ -90,11 +94,12 @@ export function setupArGestures(options: ArGestureOptions) {
   }
 
   function beginPendingModelGesture(touch: Touch, placedModel: ArModel): void {
+    const interactionRoot = placedModel.userData.interactionRoot;
     state.gesture = {
       type: "pending-model",
       startX: touch.clientX,
       startY: touch.clientY,
-      startRotation: placedModel.rotation.y,
+      startRotation: interactionRoot.rotation.y,
     };
     setGestureUi("pending-model");
     options.showHint("Geser horizontal untuk rotasi · tahan untuk pindah");
@@ -107,10 +112,11 @@ export function setupArGestures(options: ArGestureOptions) {
 
   function beginPinch(touches: TouchList, placedModel: ArModel): void {
     clearHoldTimer();
+    const interactionRoot = placedModel.userData.interactionRoot;
     state.gesture = {
       type: "pinch",
       startDistance: Math.max(1, getTouchDistance(touches)),
-      startScale: placedModel.scale.x,
+      startScale: interactionRoot.scale.x,
     };
     setGestureUi("pinch");
     options.indicator.show("pinch", placedModel);
@@ -168,7 +174,7 @@ export function setupArGestures(options: ArGestureOptions) {
     const gesture = state.gesture;
     if (!gesture || (gesture.type !== "pending-model" && gesture.type !== "rotate")) return;
     const deltaX = touch.clientX - gesture.startX;
-    placedModel.rotation.y = gesture.startRotation + deltaX * ROTATE_SENSITIVITY;
+    placedModel.userData.interactionRoot.rotation.y = gesture.startRotation + deltaX * ROTATE_SENSITIVITY;
     placedModel.updateMatrixWorld(true);
     options.indicator.update(placedModel);
     options.showHint("Rotasi " + Math.round(THREE.MathUtils.radToDeg(deltaX * ROTATE_SENSITIVITY)) + "°");
@@ -178,16 +184,20 @@ export function setupArGestures(options: ArGestureOptions) {
     const gesture = state.gesture;
     if (!gesture || gesture.type !== "drag") return;
     if (!getFloorIntersection(touch, gesture.floorY, planePoint)) return;
+    const interactionRoot = placedModel.userData.interactionRoot;
+    interactionRoot.getWorldPosition(interactionWorldPosition);
     dragDelta.copy(planePoint).sub(gesture.lastIntersection).multiplyScalar(DRAG_SENSITIVITY);
     const maxStep = THREE.MathUtils.clamp(
-      raycaster.ray.origin.distanceTo(placedModel.position) * 0.018,
+      raycaster.ray.origin.distanceTo(interactionWorldPosition) * 0.018,
       MIN_DRAG_STEP,
       MAX_DRAG_STEP
     );
     if (dragDelta.length() > maxStep) dragDelta.setLength(maxStep);
     gesture.targetPosition.add(dragDelta);
-    placedModel.position.lerp(gesture.targetPosition, DRAG_LERP);
-    placedModel.position.y = gesture.floorY;
+    nextInteractionWorldPosition.copy(interactionWorldPosition).lerp(gesture.targetPosition, DRAG_LERP);
+    nextInteractionWorldPosition.y = gesture.floorY;
+    interactionRoot.position.copy(nextInteractionWorldPosition);
+    placedModel.worldToLocal(interactionRoot.position);
     gesture.lastIntersection.copy(planePoint);
     placedModel.updateMatrixWorld(true);
     options.indicator.update(placedModel);
@@ -199,7 +209,7 @@ export function setupArGestures(options: ArGestureOptions) {
     if (!gesture || gesture.type !== "pinch") return;
     const distance = getTouchDistance(touches);
     const scale = clamp(gesture.startScale * (distance / gesture.startDistance), MIN_SCALE, MAX_SCALE);
-    placedModel.scale.setScalar(scale);
+    placedModel.userData.interactionRoot.scale.setScalar(scale);
     placedModel.updateMatrixWorld(true);
     options.indicator.update(placedModel);
     options.showHint("Ukuran " + Math.round(scale * 100) + "%");

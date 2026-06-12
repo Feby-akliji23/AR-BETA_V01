@@ -280,8 +280,8 @@ export function setArPlacementState(state: ArPlacementState, deps: ArPlacementDe
     document.body.classList.remove("ar-placed");
     reticle.visible = true;
     surfaceGrid.visible = true;
-    surfaceGrid.userData.surface.material.opacity = 0.04;
-    surfaceGrid.userData.grid.material.opacity = 0.32;
+    surfaceGrid.userData.surface.material.opacity = 0.035;
+    surfaceGrid.userData.grid.material.opacity = 0.26;
     arStatus.textContent = "Menstabilkan permukaan";
     arInstructions.textContent = "Tahan posisi kamera beberapa saat.";
     statusText.textContent = "Menstabilkan permukaan";
@@ -300,8 +300,8 @@ export function setArPlacementState(state: ArPlacementState, deps: ArPlacementDe
     document.body.classList.remove("ar-placed");
     reticle.visible = true;
     surfaceGrid.visible = true;
-    surfaceGrid.userData.surface.material.opacity = 0.09;
-    surfaceGrid.userData.grid.material.opacity = 0.62;
+    surfaceGrid.userData.surface.material.opacity = 0.045;
+    surfaceGrid.userData.grid.material.opacity = 0.32;
     arStatus.textContent = "Permukaan siap";
     arInstructions.textContent = "Tap pada permukaan untuk menaruh model.";
     statusText.textContent = "Permukaan ditemukan, tap layar";
