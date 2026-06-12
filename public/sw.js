@@ -2,7 +2,6 @@ const CACHE_NAME = "dungkluruk-ar-__APP_VERSION__";
 const PRECACHE_URLS = [
   "./",
   "./manifest.json",
-  "./assets/app-icon.svg",
   "./assets/ar_icon.png",
   "./assets/Logo%20ar.svg",
   "./assets/logo%20all%20ar.svg",
