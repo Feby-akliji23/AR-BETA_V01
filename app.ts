@@ -17,9 +17,10 @@ import { createSettingsController } from "./modules/settings.js";
 import type { ArModel } from "./modules/types.js";
 import { createGestureHintController } from "./modules/ui.js";
 
-const dungklurukUrl = "./assets/dungkluruk.webp";
-const arIconUrl = "./assets/ar_icon.png";
-const allArLogoUrl = "./assets/logo%20all%20ar.svg";
+const assetBaseUrl = import.meta.env.BASE_URL + "assets/";
+const dungklurukUrl = assetBaseUrl + "dungkluruk.webp";
+const arIconUrl = assetBaseUrl + "ar_icon.png";
+const allArLogoUrl = assetBaseUrl + "logo%20all%20ar.svg";
 const ONBOARDING_STORAGE_KEY = "dungkluruk-ar-onboarding-v1";
 const DEBUG_HOTSPOTS = new URLSearchParams(window.location.search).has("debugHotspots");
 const IS_DEBUG = new URLSearchParams(window.location.search).has("debug");
