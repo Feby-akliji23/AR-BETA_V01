@@ -178,7 +178,7 @@ export async function setupEnvironment(scene: Scene, renderer: WebGLRenderer): P
   }
 }
 
-export async function loadModel(statusText: HTMLElement): Promise<Group> {
+export async function loadModel(setStatus: (message: string) => void): Promise<Group> {
   const dracoLoader = new THREE.DRACOLoader();
   dracoLoader.setDecoderPath(modelConfig.dracoDecoderUrl);
 
@@ -189,20 +189,20 @@ export async function loadModel(statusText: HTMLElement): Promise<Group> {
     const gltf = await gltfLoader.loadAsync(modelConfig.glbUrl, (event) => {
       if (event.total > 0) {
         const percentage = Math.min(100, Math.round((event.loaded / event.total) * 100));
-        statusText.textContent = `Memuat model ${percentage}%`;
+        setStatus(`Memuat model ${percentage}%`);
         return;
       }
       const loadedMb = (event.loaded / 1024 / 1024).toFixed(1);
-      statusText.textContent = `Memuat model ${loadedMb} MB`;
+      setStatus(`Memuat model ${loadedMb} MB`);
     });
     const modelTemplate = gltf.scene;
     modelTemplate.traverse((child) => {
       if ("isMesh" in child && child.isMesh) child.frustumCulled = false;
     });
-    statusText.textContent = "Model siap";
+    setStatus("Model siap");
     return modelTemplate;
   } catch (error) {
-    statusText.textContent = "Model gagal dimuat";
+    setStatus("Model gagal dimuat");
     throw error;
   }
 }

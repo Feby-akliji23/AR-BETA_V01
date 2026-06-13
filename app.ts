@@ -43,6 +43,8 @@ let previewController: ReturnType<typeof createPreviewController> | null = null;
 let connectionBannerTimeout = 0;
 let wasOffline = !navigator.onLine;
 let loaderStatusObserver: MutationObserver | null = null;
+let isPreviewReady = false;
+let usdzPreloadStarted = false;
 
 const settings = createSettingsController({
   labels: dom.settingLabels,
@@ -65,8 +67,22 @@ async function init(): Promise<void> {
     applyProjectConfig();
     const threeScene = createThreeScene(dom.canvas);
     ({ renderer, camera } = threeScene);
-    await setupEnvironment(threeScene.scene, renderer);
-    const modelTemplate = await loadModel(dom.statusText);
+    let environmentReady = false;
+    let modelStatus = "Memulai model";
+    const updateLoadingStatus = (): void => {
+      dom.statusText.textContent = environmentReady ? modelStatus : `${modelStatus} · memuat lingkungan`;
+    };
+    updateLoadingStatus();
+    const environmentPromise = setupEnvironment(threeScene.scene, renderer).then(() => {
+      environmentReady = true;
+      updateLoadingStatus();
+    });
+    const modelPromise = loadModel((message) => {
+      modelStatus = message;
+      updateLoadingStatus();
+    });
+    const [, modelTemplate] = await Promise.all([environmentPromise, modelPromise]);
+    dom.statusText.textContent = "Menyiapkan preview";
 
     previewModel = createModelInstance(modelTemplate, hotspots, false, isDesktop());
     previewModel.visible = false;
@@ -138,6 +154,8 @@ async function init(): Promise<void> {
     showFirstVisitGuide();
     setupDebug();
     hideAppLoader();
+    isPreviewReady = true;
+    scheduleIosUsdzPreload();
   } catch (error) {
     dom.enterArButton.disabled = true;
     dom.sheetStartArButton.disabled = true;
@@ -311,6 +329,7 @@ function updateConnectionStatus(event?: Event): void {
     return;
   }
   wasOffline = false;
+  if (isPreviewReady) scheduleIosUsdzPreload();
   dom.connectionBanner.textContent = "Koneksi kembali tersedia.";
   dom.connectionBanner.classList.remove("hidden", "offline");
   dom.connectionBanner.classList.add("online");
@@ -380,6 +399,45 @@ function registerServiceWorker(): void {
       console.warn("Dukungan offline gagal diaktifkan", error);
     });
   });
+}
+
+function scheduleIosUsdzPreload(): void {
+  const usdzUrl = projectConfig.model.usdzUrl;
+  if (usdzPreloadStarted || !usdzUrl || !isIosDevice() || !canPreloadLargeAsset()) return;
+  usdzPreloadStarted = true;
+
+  const preload = (): void => {
+    void fetch(usdzUrl).catch((error) => {
+      console.warn("USDZ gagal dipersiapkan di background", error);
+    });
+  };
+  const idleWindow = window as Window & {
+    requestIdleCallback?: (callback: () => void, options?: { timeout: number }) => number;
+  };
+  if (idleWindow.requestIdleCallback) {
+    idleWindow.requestIdleCallback(preload, { timeout: 5000 });
+    return;
+  }
+  window.setTimeout(preload, 1500);
+}
+
+function isIosDevice(): boolean {
+  return (
+    /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)
+  );
+}
+
+function canPreloadLargeAsset(): boolean {
+  if (!navigator.onLine) return false;
+  const connection = (
+    navigator as Navigator & {
+      connection?: { effectiveType?: string; saveData?: boolean };
+    }
+  ).connection;
+  return (
+    !connection?.saveData && connection?.effectiveType !== "slow-2g" && connection?.effectiveType !== "2g"
+  );
 }
 
 function preventDefault(event: Event): void {
