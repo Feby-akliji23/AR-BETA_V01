@@ -346,7 +346,7 @@ export const projectConfig: ProjectConfig = {
     maxFieldOfView: "45deg",
     exposure: "1",
     shadowIntensity: "2",
-    cameraTransitionMs: 1800,
+    cameraTransitionMs: 2500,
   },
   hotspots,
 };

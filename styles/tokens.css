@@ -1,0 +1,27 @@
+:root {
+  --preview-edge-inline: clamp(10px, 3vw, 22px);
+  --preview-topbar-top: max(calc(env(safe-area-inset-top) + 10px), 12px);
+  --preview-badge-top: max(calc(env(safe-area-inset-top) + 76px), 80px);
+  --preview-nav-bottom: max(calc(env(safe-area-inset-bottom) + 28px), 32px);
+  --preview-dots-bottom: max(calc(env(safe-area-inset-bottom) + 10px), 12px);
+  --preview-hint-bottom: max(calc(env(safe-area-inset-bottom) + 92px), 96px);
+  --preview-floating-border: rgba(255, 255, 255, 0.28);
+  --preview-floating-background: rgba(255, 255, 255, 0.42);
+  --preview-floating-shadow: 0 8px 22px rgba(15, 23, 42, 0.12);
+  --preview-floating-blur: blur(12px);
+}
+
+@media (min-width: 760px) {
+  :root {
+    --preview-edge-inline: 16px;
+  }
+}
+
+@media (max-width: 759px) and (max-height: 700px) {
+  :root {
+    --preview-badge-top: max(calc(env(safe-area-inset-top) + 70px), 74px);
+    --preview-nav-bottom: max(calc(env(safe-area-inset-bottom) + 24px), 26px);
+    --preview-dots-bottom: max(calc(env(safe-area-inset-bottom) + 8px), 9px);
+    --preview-hint-bottom: max(calc(env(safe-area-inset-bottom) + 82px), 86px);
+  }
+}

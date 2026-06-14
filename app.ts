@@ -155,6 +155,7 @@ async function init(): Promise<void> {
     setupDebug();
     hideAppLoader();
     isPreviewReady = true;
+    document.body.classList.add("preview-ready");
     scheduleIosUsdzPreload();
   } catch (error) {
     dom.enterArButton.disabled = true;
@@ -201,7 +202,10 @@ function setupEvents(): void {
   document.addEventListener("click", closePanelsFromOutside);
   document.addEventListener("selectstart", preventDefault);
   document.addEventListener("dragstart", preventDefault);
-  dom.modelViewer.addEventListener("pointerdown", () => previewController?.cancelCameraAnimation(true));
+  dom.modelViewer.addEventListener("pointerdown", () => {
+    document.body.classList.add("preview-interacted");
+    previewController?.cancelCameraAnimation(true);
+  });
   dom.menuButton.addEventListener("click", toggleSideMenu);
   dom.menuBackdrop.addEventListener("click", closeSideMenu);
   dom.menuHomeButton.addEventListener("click", openHome);

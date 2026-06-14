@@ -65,13 +65,24 @@
       <button id="menu-button" type="button" aria-label="Menu">☰</button>
       <div>
         <h1 data-app-title>Dungkluruk AR</h1>
-        <p id="status">Memuat model...</p>
+        <p class="preview-subtitle">Jelajahi desa dalam AR</p>
+        <p id="status" aria-live="polite">Memuat model...</p>
       </div>
       <button id="enter-ar" type="button" disabled>
         <span class="enter-ar-label-full">Lihat di ruang Anda</span>
         <span class="enter-ar-label-short">Lihat AR</span>
       </button>
     </div>
+
+    <aside class="android-experience" aria-label="Rekomendasi perangkat">
+      <span class="android-experience-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24">
+          <path d="m8 7-2-3M16 7l2-3M5 10h14v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2z" />
+          <path d="M5 13H3v4M19 13h2v4M8 19v2M16 19v2M9 11h.1M15 11h.1" />
+        </svg>
+      </span>
+      <span>Optimized for Android Chrome + ARCore</span>
+    </aside>
 
     <div id="connection-banner" class="hidden" role="status" aria-live="polite"></div>
 
@@ -403,6 +414,10 @@
       <div data-icon="✣"><strong>Tahan + geser</strong><span>Pindah</span></div>
       <div data-icon="↕"><strong>Pinch</strong><span>Ubah ukuran</span></div>
     </div>
+
+    <aside id="preview-gesture-hint" aria-label="Petunjuk interaksi model">
+      <span>Geser untuk memutar · Cubit untuk zoom</span>
+    </aside>
 
     <div class="button-container">
       <button class="nav-button" id="prev-button" type="button" aria-label="Titik sebelumnya">

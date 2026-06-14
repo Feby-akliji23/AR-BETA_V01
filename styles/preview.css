@@ -1,0 +1,118 @@
+body:not(.ar-active) #topbar {
+  top: var(--preview-topbar-top);
+  right: var(--preview-edge-inline);
+  left: var(--preview-edge-inline);
+  width: auto;
+  transform: none;
+}
+
+.preview-subtitle {
+  margin: 5px 0 0;
+  color: #4b5563;
+  font-size: clamp(10px, 2.8vw, 12px);
+  line-height: 1.15;
+}
+
+body.ar-active .preview-subtitle {
+  display: none;
+}
+
+body.preview-ready:not(.ar-active) #status {
+  display: none;
+}
+
+.android-experience {
+  position: fixed;
+  top: var(--preview-badge-top);
+  left: 50%;
+  z-index: 29;
+  display: flex;
+  width: max-content;
+  max-width: calc(100vw - 28px);
+  gap: 7px;
+  align-items: center;
+  transform: translateX(-50%);
+  border: 1px solid var(--preview-floating-border);
+  border-radius: 999px;
+  padding: 6px 11px;
+  color: #4b5563;
+  background: var(--preview-floating-background);
+  box-shadow: var(--preview-floating-shadow);
+  backdrop-filter: var(--preview-floating-blur);
+  white-space: nowrap;
+  font-size: clamp(9px, 2.5vw, 11px);
+  line-height: 1;
+  pointer-events: none;
+}
+
+body.ar-active .android-experience {
+  display: none;
+}
+
+.android-experience-icon {
+  display: grid;
+  width: 18px;
+  height: 18px;
+  place-items: center;
+  color: #6b7280;
+}
+
+.android-experience-icon svg {
+  width: 17px;
+  height: 17px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.7;
+}
+
+body:not(.ar-active) .button-container {
+  bottom: var(--preview-nav-bottom);
+}
+
+body:not(.ar-active) #nav-dots {
+  bottom: var(--preview-dots-bottom);
+}
+
+#preview-gesture-hint {
+  position: fixed;
+  bottom: var(--preview-hint-bottom);
+  left: 50%;
+  z-index: 29;
+  display: flex;
+  width: max-content;
+  max-width: calc(100vw - 40px);
+  gap: 7px;
+  align-items: center;
+  transform: translateX(-50%);
+  border: 1px solid rgba(255, 255, 255, 0.34);
+  border-radius: 999px;
+  padding: 6px 11px;
+  color: #ffffff;
+  background: rgba(17, 24, 39, 0.24);
+  box-shadow: var(--preview-floating-shadow);
+  backdrop-filter: var(--preview-floating-blur);
+  white-space: nowrap;
+  font-size: clamp(9px, 2.7vw, 11px);
+  line-height: 1;
+  pointer-events: none;
+  transition:
+    visibility 180ms ease,
+    opacity 180ms ease,
+    transform 180ms ease;
+}
+
+body.preview-interacted #preview-gesture-hint,
+body.ar-active #preview-gesture-hint {
+  visibility: hidden;
+  opacity: 0;
+  transform: translate(-50%, 6px);
+}
+
+@media (orientation: landscape) and (max-height: 560px) {
+  body:not(.ar-active) .android-experience,
+  body:not(.ar-active) #preview-gesture-hint {
+    display: none;
+  }
+}
