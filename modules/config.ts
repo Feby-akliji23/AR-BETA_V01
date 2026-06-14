@@ -320,7 +320,7 @@ export const projectConfig: ProjectConfig = {
     defaultImageUrl: "./assets/dungkluruk.webp",
   },
   model: {
-    glbUrl: "./assets/dungkluruk.glb",
+    glbUrl: "./assets/dungkluruk_1.glb",
     usdzUrl: "./assets/dungkluruk.usdz",
     environmentUrl: "./assets/whipple_creek_regional_park_04_1k.hdr",
     dracoDecoderUrl: "./assets/draco/",
@@ -345,8 +345,8 @@ export const projectConfig: ProjectConfig = {
     minFieldOfView: "0deg",
     maxFieldOfView: "45deg",
     exposure: "1",
-    shadowIntensity: "2",
-    cameraTransitionMs: 2500,
+    shadowIntensity: "0",
+    cameraTransitionMs: 1500,
   },
   hotspots,
 };
